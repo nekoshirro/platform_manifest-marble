@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Clean everything before start
-rm -rf .
+rm -rf *
 rm -rf .repo
 rm -rf llvm-build
 echo "Cleaning completed"
@@ -13,7 +13,7 @@ mkdir llvm-build
 # Working
 pushd llvm-build
 rm -rf *
-git clone https://github.com/nekoshirro/Alchemist-Toolchain.git clang-21 toolchains --depth 1
+git clone https://github.com/nekoshirro/Alchemist-Toolchain.git -b clang-21 toolchains --depth 1
 cd toolchains
 chmod +x build-tc.sh
 ./build-tc.sh
