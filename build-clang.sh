@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Clean everything before start
+rm -rf *
+rm -rf .repo
 rm -rf llvm-build
 echo "Cleaning completed"
 
