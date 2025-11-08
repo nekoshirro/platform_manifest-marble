@@ -13,7 +13,7 @@ mkdir llvm-build
 # Working
 pushd llvm-build
 rm -rf *
-git clone https://github.com/nekoshirro/Alchemist-Toolchain.git -b clang-21 toolchains --depth 1
+git clone https://github.com/nekoshirro/Alchemist-Toolchain.git -b clang-22-LTO toolchains --depth 1
 cd toolchains
 chmod +x build-tc.sh
 ./build-tc.sh
