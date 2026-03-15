@@ -70,7 +70,6 @@ repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 /opt/crave/resync.sh
 
 echo "Cleaning workspace..."
-echo "cm0gLXJmIG91dC90YXJnZXQvcHJvZHVjdC9tYXJibGU=" | base64 -d | bash
 rm -rf device/xiaomi/marble
 rm -rf vendor/xiaomi/marble
 rm -rf kernel/xiaomi/marble
