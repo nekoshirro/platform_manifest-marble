@@ -89,9 +89,9 @@ rm -rf out/target/product/marble
 echo "Cloning device stuff..."
 # Device Trees
 git clone https://github.com/nekoshirro/platform_device_xiaomi_marble.git device/xiaomi/marble -b alchemist-llvm --depth 1
-git clone https://github.com/nekoshirro/platform_device_xiaomi_miuicamera-marble.git device/xiaomi/miuicamera-marble
+git clone https://github.com/fiqri19102002/android_device_xiaomi_miuicamera-marble.git -b lineage-23.2 device/xiaomi/miuicamera-marble
 git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 16 vendor/xiaomi/marble --depth 1
-git clone https://github.com/nekoshirro/platform_vendor_xiaomi_miuicamera-marble.git vendor/xiaomi/miuicamera-marble --depth 1
+git clone https://codeberg.org/fiqri19102002/proprietary_vendor_xiaomi_miuicamera-marble.git -b lineage-23.2 vendor/xiaomi/miuicamera-marble
 git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b resukisu-staging kernel/xiaomi/marble --depth 1
 git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
 git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
