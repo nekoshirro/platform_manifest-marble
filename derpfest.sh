@@ -71,6 +71,26 @@ send_telegram() {
     -d "disable_web_page_preview=true" > /dev/null
 }
 
+send_telegram_file() {
+
+  local chat_id="$1"
+  local file_path="$2"
+  local caption="$3"
+
+  if [ ! -f "$file_path" ]; then
+    echo "Error: File $file_path not found!"
+    return 1
+  fi
+
+  echo -e "\n[$(date '+%Y-%m-%d %H:%M:%S')] Sending document to Telegram (${chat_id})"
+
+  curl -s -X POST "https://api.telegram.org/bot${_TK}/sendDocument" \
+    -F "chat_id=${chat_id}" \
+    -F "document=@${file_path}" \
+    -F "caption=${caption}" \
+    -F "parse_mode=MarkdownV2" > /dev/null
+}
+
 # Function to format total seconds into HH:MM:SS string
 format_duration() {
     local T=$1
@@ -131,6 +151,7 @@ start_build_process() {
     rm -rf vendor/lineage-priv*
     rm -rf vendor/lineage/*priv*
     rm -rf vendor/*lineage-priv*
+    rm -rf vendor/certification
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
@@ -144,6 +165,7 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b bka-no-dolby hardware/xiaomi --depth 1
     git clone https://github.com/LineageOS/android_packages_apps_EuiccPolicy packages/apps/EuiccPolicy
+    git clone https://github.com/nekoshirro/android_vendor_certification.git vendor/certification
 
     pushd vendor/xiaomi/marble
     git lfs install
@@ -189,9 +211,11 @@ start_build_process() {
     if [[ $BUILD_STATUS -eq 0 ]]; then
         local status_icon="✅"
         local status_text="Success"
+	LOG_FILE="log.txt"
     else
         local status_icon="❌"
         local status_text="Failure (Exit Code: $BUILD_STATUS)"
+	LOG_FILE="out/error.log"
     fi
 
     # Final Message with Android Version
@@ -202,6 +226,12 @@ start_build_process() {
     *Duration:* $DURATION_FORMATTED
     *Status:* $status_text"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
+
+    if [[ -f "$LOG_FILE" ]]; then
+	send_telegram_file "$TG_BUILD_CHAT_ID" "$LOG_FILE"
+    else
+	send_telegram "$TG_BUILD_CHAT_ID" "⚠️ Warning: Log file ${LOG_FILE} not found."
+    fi
 
     # Conditional Upload ROM
     if [[ $BUILD_STATUS -eq 0 ]]; then
