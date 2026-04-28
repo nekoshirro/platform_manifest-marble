@@ -1,6 +1,17 @@
 #!/bin/bash
 
-source .secrets
+if [ -f "$HOME/.secrets" ]; then
+    source "$HOME/.secrets"
+else
+    echo "File .secrets not found in $HOME"
+fi
+
+if [ -f "$(pwd)/.secrets" ]; then
+    source "$(pwd)/.secrets"
+else
+    echo "File .secrets not found in $(pwd)"
+fi
+
 
 # =========================================================
 # CONFIGURATION
