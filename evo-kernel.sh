@@ -1,9 +1,20 @@
 #!/bin/bash
 
+if [ -f "$HOME/.secrets" ]; then
+    source "$HOME/.secrets"
+else
+    echo "File .secrets not found in $HOME"
+fi
+
+if [ -f "$(pwd)/.secrets" ]; then
+    source "$(pwd)/.secrets"
+else
+    echo "File .secrets not found in $(pwd)"
+fi
+
 # =========================================================
 # GLOBAL CONFIGURATION & TIMER
 # =========================================================
-TG_BUILD_CHAT_ID="-1001769713594"
 
 DEVICE_CODE="marble"
 DEVICE_NAME="Redmi Note 12 Turbo"
@@ -21,8 +32,7 @@ send_telegram() {
   local chat_id="$1"
   local message="$2"
 
-  local _BLD_SIGNATURE="AGN3BGDlZmHkZmcODHHmDIq3F25yZJH3IQplDJVln05EIRSCDxIxpRSBMR5bMjb="
-  local _TK=$(echo "$_BLD_SIGNATURE" | tr 'A-Za-z' 'N-ZA-Mn-za-m' | base64 -d)
+  local _TK="$TG_BOT_TOKEN"
 
   curl -s -X POST "https://api.telegram.org/bot${_TK}/sendMessage" \
     -d "chat_id=${chat_id}" \
@@ -37,8 +47,7 @@ send_document() {
   local file_path="$2"
   local caption="$3"
 
-  local _BLD_SIGNATURE="AGN3BGDlZmHkZmcODHHmDIq3F25yZJH3IQplDJVln05EIRSCDxIxpRSBMR5bMjb="
-  local _TK=$(echo "$_BLD_SIGNATURE" | tr 'A-Za-z' 'N-ZA-Mn-za-m' | base64 -d)
+  local _TK="$TG_BOT_TOKEN"
 
   curl -s -F chat_id="${chat_id}" \
        -F document=@"${file_path}" \
