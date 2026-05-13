@@ -158,6 +158,8 @@ start_build_process() {
     rm -rf packages/apps/GameBar
     rm -rf packages/apps/TouchServices
     rm -rf out/target/product/marble
+    rm -rf vendor/evolution
+    rm -rf vendor/lineage
     rm -rf vendor/*priv*
     rm -rf vendor/evolution/*priv*
     rm -rf vendor/*lineage-priv*
@@ -173,6 +175,7 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b bka-no-dolby hardware/xiaomi --depth 1
+    git clone https://github.com/nekoshirro/vendor_evolution.git vendor/lineage --depth 1
 
     pushd vendor/xiaomi/marble
     git lfs install
