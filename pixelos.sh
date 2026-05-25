@@ -123,6 +123,7 @@ start_build_process() {
 
     # Message for Build Started
     local initial_msg="⚙️ *ROM Build Started!*
+
     *ROM:* $BUILD_TARGET
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE
@@ -134,8 +135,9 @@ start_build_process() {
     # ORIGINAL BUILD STEPS
     # =========================================================
 
-    # Init PixelOS 16.2
-    repo init -u https://github.com/PixelOS-AOSP/android_manifest.git -b sixteen-qpr2 --git-lfs
+    # Init PixelOS 16.2 (POS-GM)
+    rm -rf frameworks/base build/soong prebuilt
+    repo init -u https://github.com/pos-gm/android_manifest.git -b sixteen-qpr2 --git-lfs --depth 1
 
     # Resync sources
     /opt/crave/resync.sh
@@ -174,19 +176,15 @@ start_build_process() {
     git clone https://codeberg.org/fiqri19102002/vendor_custom_signing-keys.git vendor/custom/signing
 
     pushd build/soong
-    git remote add fiqri https://github.com/fiqri19102002/android_build_soong.git 2>/dev/null || git remote set-url fiqri https://github.com/fiqri19102002/android_build_soong.git
-    git fetch fiqri sixteen-qpr2 --unshallow
-    git reset --hard fiqri/sixteen-qpr2
-    popd
-
-    pushd packages/apps/Settings
-    git fetch https://github.com/pos-gm/android_packages_apps_Settings.git sixteen-qpr2
-    git cherry-pick 457adcfa8d8d36e8f8b071306f5160d9252f984f
+    git fetch --unshallow
+    git remote add fiqri https://github.com/fiqri19102002/android_build_soong.git
+    git fetch fiqri
+    git cherry-pick 7d0dc9b2556c684e94d09564b6d38598314b93df 479ca4d056a241e7a5994b0e6ba71c9247eed29d
     popd
 
     pushd frameworks/base
-    git fetch https://github.com/pos-gm/android_frameworks_base.git
-    git cherry-pick -s 54e26259961013176df9a1dd5a0f573dd8b1da8c a95eb0d20a25b74f3ba83ac04690a99047c845a6 0c6a1df2d1a7b395773fbc7c6c08c7daaafb7f9a 8c1359b1fc8b0c37af965f909adff51e9a245415 745613b3074535e03014e15ec4bf740a20fa9532
+    git fetch --unshallow
+    git revert 12f4e180523fea4d0c5cff15e2302efd0af4602d
     popd
 
     pushd vendor/xiaomi/marble
@@ -235,6 +233,7 @@ start_build_process() {
 
     # Final Message with Android Version
     local final_msg="${status_icon} *Build Finished!*
+
     *ROM:* $BUILD_TARGET
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE
