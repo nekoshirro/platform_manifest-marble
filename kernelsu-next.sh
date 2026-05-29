@@ -114,6 +114,13 @@ git lfs pull
 git lfs fetch --all
 popd
 
+pushd kernel/xiaomi/marble
+wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/kernel/manager.patch
+cd KernelSU-Next
+patch -p1 < ../manager.patch
+popd
+
+
 # =========================================================
 # PREPARE BUILD ENV
 # =========================================================
