@@ -18,7 +18,7 @@ fi
 
 DEVICE_CODE="marble"
 DEVICE_NAME="Redmi Note 12 Turbo"
-KERNEL_NAME="Alchemist"
+KERNEL_NAME="Onodera"
 
 # SHELL CONFIGURATION
 export TZ="Asia/Jakarta"
