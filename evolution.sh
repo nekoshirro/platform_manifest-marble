@@ -136,7 +136,7 @@ start_build_process() {
     # =========================================================
 
     # Init Evolution-X
-    repo init -u https://github.com/Evolution-X/manifest -b bq2 --git-lfs --depth 1
+    repo init -u https://github.com/Evolution-X/manifest -b bka --git-lfs --depth 1
 
     # Resync sources
     /opt/crave/resync.sh
