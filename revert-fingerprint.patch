@@ -1,0 +1,24 @@
+From: Hafidz <nekoshirro@users.noreply.github.com>
+Subject: [PATCH] Revert "config: Spoof BuildFingerprint as Pixel Canary"
+
+This reverts commit 302fc3ffb822cd3a975f0d0edf5624c0391601d1.
+
+The fingerprint spoof is unwanted for self-built/unofficial use where
+RCS and Google Wallet integrity are not a concern, and the original
+device fingerprint should be preserved instead.
+---
+ config/evolution.mk | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/config/evolution.mk b/config/evolution.mk
+index bb88cc9b7..fb156bf33 100644
+--- a/config/evolution.mk
++++ b/config/evolution.mk
+@@ -1,7 +1,3 @@
+-# BuildFingerprint spoof to fix RCS/Wallet
+-PRODUCT_BUILD_PROP_OVERRIDES += \
+-    BuildFingerprint=google/mustang_beta/mustang:CANARY/ZP11.260515.009/15513807:user/release-keys
+-
+ # Evolution X packages
+ PRODUCT_PACKAGES += \
+     AxQuickLook \

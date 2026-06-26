@@ -196,6 +196,12 @@ start_build_process() {
     patch -p1 < nekoshirro-maintainer.patch
     popd
 
+    # Remove fingerprint spoofing patch
+    pushd vendor/lineage
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/revert-fingerprint.patch
+    patch -p1 < revert-fingerprint.patch
+    popd
+
     echo "Tree sync complete."
 
     # Sign build with custom signing keys from Evolution-X
