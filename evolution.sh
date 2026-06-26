@@ -123,6 +123,7 @@ start_build_process() {
 
     # Message for Build Started
     local initial_msg="⚙️ *ROM Build Started!*
+
     *ROM:* $BUILD_TARGET
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE
@@ -135,7 +136,7 @@ start_build_process() {
     # =========================================================
 
     # Init Evolution-X
-    repo init -u https://github.com/Evolution-X/manifest -b bq2 --git-lfs
+    repo init -u https://github.com/Evolution-X/manifest -b bq2 --git-lfs --depth 1
 
     # Resync sources
     /opt/crave/resync.sh
@@ -163,6 +164,7 @@ start_build_process() {
     rm -rf vendor/*priv*
     rm -rf vendor/evolution/*priv*
     rm -rf vendor/*lineage-priv*
+    rm -rf packages/apps/Settings
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
@@ -175,7 +177,8 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b bka-no-dolby hardware/xiaomi --depth 1
-    git clone https://github.com/nekoshirro/vendor_evolution.git vendor/lineage --depth 1
+    git clone https://github.com/Evolution-X/vendor_evolution.git -b bka vendor/lineage --depth 1
+    git clone https://github.com/Evolution-X/packages_apps_Settings.git -b bka packages/apps/Settings --depth 1
 
     pushd vendor/xiaomi/marble
     git lfs install
@@ -185,6 +188,12 @@ start_build_process() {
     pushd vendor/xiaomi/miuicamera-marble
     git lfs install
     git lfs pull
+    popd
+
+    # Add maintainer badge patch
+    pushd packages/apps/Settings
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/nekoshirro-maintainer.patch
+    patch -p1 < nekoshirro-maintainer.patch
     popd
 
     echo "Tree sync complete."
@@ -230,6 +239,7 @@ start_build_process() {
 
     # Final Message with Android Version
     local final_msg="${status_icon} *Build Finished!*
+
     *ROM:* $BUILD_TARGET
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE

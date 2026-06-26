@@ -1,0 +1,38 @@
+diff --git a/src/com/android/settings/deviceinfo/hardwareinfo/HardwareInfoPreferenceController.java b/src/com/android/settings/deviceinfo/hardwareinfo/HardwareInfoPreferenceController.java
+index dbff1d6..b2856d5 100644
+--- a/src/com/android/settings/deviceinfo/hardwareinfo/HardwareInfoPreferenceController.java
++++ b/src/com/android/settings/deviceinfo/hardwareinfo/HardwareInfoPreferenceController.java
+@@ -77,6 +77,18 @@ public class HardwareInfoPreferenceController extends BasePreferenceController {
+     private static final String EVO_OTA_URL =
+             "https://raw.githubusercontent.com/Evolution-X/OTA/bka/builds/%s.json";
+ 
++    // -------------------------------------------------------------------------
++    // Unofficial/self-built fallback maintainer avatar
++    //
++    // The official OTA JSON path is the only one that ever resolves a GitHub
++    // username automatically. Unofficial builds have no JSON to read from, so
++    // there is nothing to fetch a username out of — it has to be hardcoded
++    // here instead. Set this to your own GitHub username so your avatar shows
++    // up on your self-built ROM. Leave it empty ("") to keep the previous
++    // behaviour (no avatar, name-only card) for unofficial builds.
++    // -------------------------------------------------------------------------
++    private static final String UNOFFICIAL_MAINTAINER_GITHUB = "nekoshirro";
++
+     // -------------------------------------------------------------------------
+     // Disk-cache SharedPreferences name
+     // -------------------------------------------------------------------------
+@@ -522,6 +534,14 @@ public class HardwareInfoPreferenceController extends BasePreferenceController {
+             if (badgeView != null) badgeView.setVisibility(View.GONE);
+             final String donateUrl = UrlUtils.sanitizeUrl(overlayDonateUrl);
+             setupChevronAndClick(card, chevron, displayName, null, donateUrl);
++
++            if (avatarView != null && !UNOFFICIAL_MAINTAINER_GITHUB.isEmpty()) {
++                loadGithubAvatar(layoutPref, UNOFFICIAL_MAINTAINER_GITHUB);
++                avatarView.setClickable(true);
++                avatarView.setFocusable(true);
++                avatarView.setOnClickListener(v ->
++                        openUrl("https://github.com/" + UNOFFICIAL_MAINTAINER_GITHUB));
++            }
+         }
+ 
+         card.setVisibility(View.VISIBLE);
