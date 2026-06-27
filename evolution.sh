@@ -190,10 +190,12 @@ start_build_process() {
     git lfs pull
     popd
 
-    # Add maintainer badge patch
+    # Add maintainer badge patch and new device model info
     pushd packages/apps/Settings
     wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/nekoshirro-maintainer.patch
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/device-image-lineage-marble.patch
     patch -p1 < nekoshirro-maintainer.patch
+    git apply device-image-lineage-marble.patch
     popd
 
     # Remove fingerprint spoofing patch
