@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote name="aosp" fetch="https://android.googlesource.com/" review="https://android-review.googlesource.com/" />
+  <remote name="clo" fetch="https://git.codelinaro.org/clo/la" review="codelinaro.org" />
+  <remote name="github" fetch="https://github.com/" />
+  
+  <remote name="nekoshirro_github" fetch="https://github.com/nekoshirro/" />
+  <remote name="nekoshirro_gitlab" fetch="https://gitlab.com/nekoshirro/" />
+
+  <default remote="clo" revision="kernel.build.lnx.1.0" sync-j="8" />
+
+  <!-- Build Tools -->
+  <project name="kernel_platform/external/dtc" path="external/dtc" revision="refs/heads/kernel.build.lnx.1.0.r1-rel" clone-depth="1" />
+  <project name="kernel_platform/prebuilts/build-tools" path="prebuilts/build-tools" revision="refs/heads/ks-kernel.lnx.1.0.r1-rel" clone-depth="1" />
+  <project name="kernel_platform/system/tools/mkbootimg" path="tools/mkbootimg" revision="refs/heads/ks-kernel.lnx.1.0.r1-rel" clone-depth="1" />
+  
+  <!-- Toolchain Alchemist LLVM -->
+  <project name="Alchemist-LLVM" path="prebuilts-master/clang/host/linux-x86/clang-alchemist" remote="nekoshirro_gitlab" revision="clang-22-LTO" clone-depth="1" />
+
+  <!-- Kernel -->
+  <project name="platform_kernel_xiaomi_marble" path="xiaomi/sm8450" remote="nekoshirro_github" revision="ksu-next-staging" fetch-submodules="true" clone-depth="1" />
+  
+  <!-- Modules dan Devicetrees -->
+  <project name="platform_kernel_xiaomi_marble-devicetrees" path="xiaomi/sm8450-devicetrees" remote="nekoshirro_github" revision="16" clone-depth="1" />
+  <project name="platform_kernel_xiaomi_marble-modules" path="xiaomi/sm8450-modules" remote="nekoshirro_github" revision="16" clone-depth="1" />
+
+</manifest>
