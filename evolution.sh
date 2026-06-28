@@ -165,6 +165,7 @@ start_build_process() {
     rm -rf vendor/evolution/*priv*
     rm -rf vendor/*lineage-priv*
     rm -rf packages/apps/Settings
+    rm -rf frameworks/base
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
@@ -179,6 +180,7 @@ start_build_process() {
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b bka-no-dolby hardware/xiaomi --depth 1
     git clone https://github.com/Evolution-X/vendor_evolution.git -b bka vendor/lineage --depth 1
     git clone https://github.com/Evolution-X/packages_apps_Settings.git -b bka packages/apps/Settings --depth 1
+    git clone https://github.com/Evolution-X/frameworks_base.git -b bka frameworks/base --depth 1
 
     pushd vendor/xiaomi/marble
     git lfs install
@@ -188,6 +190,12 @@ start_build_process() {
     pushd vendor/xiaomi/miuicamera-marble
     git lfs install
     git lfs pull
+    popd
+
+    # Revert split shade notification style
+    pushd frameworks/base
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/revert-split-shade.patch
+    patch -p1 < revert-split-shade.patch
     popd
 
     # Add maintainer badge patch and new device model info
