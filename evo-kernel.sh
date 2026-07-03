@@ -68,7 +68,7 @@ git lfs install
 # =========================================================
 
 echo "Re-init LineageOS Setup..."
-repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs
+repo init -u https://github.com/LineageOS/android.git -b lineage-23.2 --git-lfs --depth 1
 /opt/crave/resync.sh
 repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
 /opt/crave/resync.sh
@@ -167,7 +167,7 @@ if [[ $BUILD_STATUS -eq 0 ]]; then
     DATE_TAG=$(date +%Y%m%d)
     TIME_TAG=$(date +%H%M)
 
-    FINAL_ZIP_NAME="Evo-11.x-${KERNEL_VERSION}-KSU-Next-v3.2.0-susfs-2.1.0.zip"
+    FINAL_ZIP_NAME="Evo-12.x-${KERNEL_VERSION}-KSU-Next-v3.2.0-susfs-2.2.0.zip"
 
     cd AnyKernel3
     zip -r9 "../$FINAL_ZIP_NAME" * -x .git README.md
