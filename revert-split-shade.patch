@@ -1,0 +1,23 @@
+From: Hafidz Muzakky <ais.muzakky@gmail.com>
+Date: Wed, 15 Jul 2026 00:25:01 +0700
+Subject: [PATCH] Revert: SystemUI: Enable landscape lockscreen flag
+
+This manually reverts the landscape lockscreen flag back to unreleased.
+
+---
+ packages/SystemUI/src/com/android/systemui/flags/Flags.kt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/flags/Flags.kt b/packages/SystemUI/src/com/android/systemui/flags/Flags.kt
+index 9baccf58d1021..3f9f4f9ef2f4b 100644
+--- a/packages/SystemUI/src/com/android/systemui/flags/Flags.kt
++++ b/packages/SystemUI/src/com/android/systemui/flags/Flags.kt
+@@ -196,7 +196,7 @@ object Flags {
+     val ALWAYS_SHOW_HOME_CONTROLS_ON_DREAMS = releasedFlag("always_show_home_controls_on_dreams")
+ 
+     // TODO(b/293252410) : Tracking Bug
+-    @JvmField val LOCKSCREEN_ENABLE_LANDSCAPE = releasedFlag("lockscreen.enable_landscape")
++    @JvmField val LOCKSCREEN_ENABLE_LANDSCAPE = unreleasedFlag("lockscreen.enable_landscape")
+ 
+     // 1200 - predictive back
+     @Keep

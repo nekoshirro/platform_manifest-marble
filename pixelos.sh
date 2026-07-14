@@ -161,6 +161,8 @@ start_build_process() {
     rm -rf hardware/dolby
     rm -rf out/target/product/marble
     rm -rf vendor/custom/signing
+    rm -rf vendor/lineage
+    rm -rf frameworks/base
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
@@ -174,6 +176,8 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/nekoshirro/android_hardware_xiaomi.git hardware/xiaomi --depth 1 -b pixelos-16
     git clone https://codeberg.org/fiqri19102002/vendor_custom_signing-keys.git vendor/custom/signing
+    git clone https://github.com/pos-gm/android_vendor_lineage.git vendor/lineage --depth 1
+    git clone https://github.com/pos-gm/android_frameworks_base.git frameworks/base --depth 1
 
     pushd build/soong
     git fetch --unshallow
@@ -182,9 +186,27 @@ start_build_process() {
     git cherry-pick 7d0dc9b2556c684e94d09564b6d38598314b93df 479ca4d056a241e7a5994b0e6ba71c9247eed29d
     popd
 
+    echo "Patching time!"
+    pushd vendor/lineage
+    rm -rf sec*.patch*
+    wget -O security-patch.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/security-patch.patch
+    patch -N -p1 < security-patch.patch
+    popd
+
     pushd frameworks/base
-    git fetch --unshallow
-    git revert 12f4e180523fea4d0c5cff15e2302efd0af4602d
+    rm -rf revert*.patch*
+    wget -O revert-split-shade.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/revert-split-shade.patch
+    patch -N -p1 < revert-split-shade.patch
+    popd
+
+    pushd vendor/custom/overlay/rro_packages/FrameworkOverlayCustom/res
+    rm -f drawable-hdpi/default_wallpaper.png
+    rm -f drawable-xhdpi/default_wallpaper.png
+    rm -f drawable-xxhdpi/default_wallpaper.png
+    rm -f drawable-xxxhdpi/default_wallpaper.png
+
+    rm -f drawable-nodpi/default_wallpaper.png
+    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/default_wallpaper.png
     popd
 
     pushd vendor/xiaomi/marble
