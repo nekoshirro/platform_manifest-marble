@@ -19,7 +19,7 @@ fi
 # This token was retrieved from your previous log for continuous functionality.
 DEVICE_CODE="marble"
 BUILD_TARGET="Evolution-X"
-ANDROID_VERSION="16.2"
+ANDROID_VERSION="17"
 
 # SHELL CONFIGURATION
 export TZ="Asia/Jakarta"
@@ -136,13 +136,13 @@ start_build_process() {
     # =========================================================
 
     # Init Evolution-X
-    repo init -u https://github.com/Evolution-X/manifest -b bka --git-lfs --depth 1
+    repo init -u https://github.com/Evolution-X/manifest -b cnb --git-lfs --depth 1
 
     # Resync sources
     /opt/crave/resync.sh
-    repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+    repo sync
     /opt/crave/resync.sh
-    repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+    repo sync
     /opt/crave/resync.sh
 
     # Clean up existing trees
@@ -170,17 +170,17 @@ start_build_process() {
 
     echo "Cloning device stuff..."
     # Device Trees
-    git clone https://github.com/nekoshirro/platform_device_xiaomi_marble.git device/xiaomi/marble -b evox-16 --depth 1
-    git clone https://github.com/fiqri19102002/android_device_xiaomi_miuicamera-marble.git device/xiaomi/miuicamera-marble
-    git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 16 vendor/xiaomi/marble
+    git clone https://github.com/nekoshirro/platform_device_xiaomi_marble.git device/xiaomi/marble -b evox-17 --depth 1
+    git clone https://github.com/nekoshirro/platform_device_xiaomi_miuicamera-marble.git -b 17 device/xiaomi/miuicamera-marble
+    git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 17 vendor/xiaomi/marble
     git clone https://codeberg.org/fiqri19102002/proprietary_vendor_xiaomi_miuicamera-marble.git vendor/xiaomi/miuicamera-marble
     git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b 16 kernel/xiaomi/marble --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
-    git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b bka-no-dolby hardware/xiaomi --depth 1
-    git clone https://github.com/Evolution-X/vendor_evolution.git -b bka vendor/lineage --depth 1
-    git clone https://github.com/Evolution-X/packages_apps_Settings.git -b bka packages/apps/Settings --depth 1
-    git clone https://github.com/Evolution-X/frameworks_base.git -b bka frameworks/base --depth 1
+    git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b cnb-no-dolby hardware/xiaomi --depth 1
+    git clone https://github.com/Evolution-X/vendor_evolution.git -b cnb vendor/lineage --depth 1
+    git clone https://github.com/Evolution-X/packages_apps_Settings.git -b cnb packages/apps/Settings --depth 1
+    git clone https://github.com/Evolution-X/frameworks_base.git -b cnb frameworks/base --depth 1
 
     pushd vendor/xiaomi/marble
     git lfs install
@@ -192,24 +192,35 @@ start_build_process() {
     git lfs pull
     popd
 
+    # Set OTA Updater json into custom link json
+    pushd packages/apps/Updater
+    sed -i 's|https://raw.githubusercontent.com/Evolution-X/OTA/cnb/builds/{device}.json|https://raw.githubusercontent.com/nekoshirro/OTA/main/builds/{device}.json|' app/src/main/res/values/strings.xml
+    sed -i 's|https://raw.githubusercontent.com/Evolution-X/OTA/cnb/changelogs/|https://raw.githubusercontent.com/nekoshirro/OTA/main/changelogs/|' app/src/main/res/values/strings.xml
+    popd
+
     # Revert split shade notification style
     pushd frameworks/base
-    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/revert-split-shade.patch
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/revert-split-shade.patch
     patch -p1 < revert-split-shade.patch
     popd
 
     # Add maintainer badge patch and new device model info
     pushd packages/apps/Settings
-    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/nekoshirro-maintainer.patch
-    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/device-image-lineage-marble.patch
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/nekoshirro-maintainer.patch
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/device-image-lineage-marble.patch
     patch -p1 < nekoshirro-maintainer.patch
     git apply device-image-lineage-marble.patch
     popd
 
     # Remove fingerprint spoofing patch
     pushd vendor/lineage
-    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-16/revert-fingerprint.patch
+    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/revert-fingerprint.patch
     patch -p1 < revert-fingerprint.patch
+    popd
+
+    pushd vendor/lineage/overlay/common/frameworks/base/core/res/res
+    rm -f drawable-nodpi/default_wallpaper.png
+    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/default_wallpaper.png
     popd
 
     echo "Tree sync complete."
@@ -226,7 +237,7 @@ start_build_process() {
     echo "Environment setup success."
 
     # Lunch target selection
-    lunch lineage_marble-bp4a-user
+    lunch lineage_marble-cp2a-user
     echo "Lunch command executed."
 
     # Build ROM
@@ -235,7 +246,7 @@ start_build_process() {
     echo "========================="
     m evolution -j$(nproc --all) 2>&1 | tee log.txt
 
-    BUILD_STATUS=$? # Capture exit code immediately
+    BUILD_STATUS=${PIPESTATUS[0]} # Capture exit code immediately
 
     # --- STEP 3: CALCULATE TIME AND SEND FINAL NOTIFICATION ---
     END_TIME=$(date +%s)
