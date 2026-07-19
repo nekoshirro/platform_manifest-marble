@@ -213,10 +213,10 @@ start_build_process() {
     popd
 
     # Remove fingerprint spoofing patch
-    pushd vendor/lineage
-    wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/revert-fingerprint.patch
-    patch -p1 < revert-fingerprint.patch
-    popd
+    # pushd vendor/lineage
+    # wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/revert-fingerprint.patch
+    # patch -p1 < revert-fingerprint.patch
+    # popd
 
     pushd vendor/lineage/overlay/common/frameworks/base/core/res/res
     rm -f drawable-nodpi/default_wallpaper.png
