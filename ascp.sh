@@ -212,6 +212,10 @@ start_build_process() {
     sed -i 's|val maintainer = SystemProperties.get(ROM_PROPERTY, "")|val maintainer = SystemProperties.get(ROM_PROPERTY, "").replace("_", " ")|' src/com/android/settings/deviceinfo/firmwareversion/AscpMaintainerPreference.kt
     popd
 
+    pushd packages/apps/Updater
+    sed -i 's|https://raw.githubusercontent.com/ASCP OS-Devices/official_devices/bellflower/API/{device}.json|https://raw.githubusercontent.com/nekoshirro/OTA/main/builds/{device}.json|' app/src/main/res/values/strings.xml
+    popd
+
     echo "Tree sync complete."
 
     # Setup the build environment
