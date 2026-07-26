@@ -162,6 +162,7 @@ start_build_process() {
     rm -rf vendor/*priv*
     rm -rf vendor/*lineage-priv*
     rm -rf packages/apps/Settings
+    rm -rf vendor/custom
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
@@ -175,6 +176,7 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b cnb-no-dolby hardware/xiaomi --depth 1
     git clone https://codeberg.org/ascp-lfs/platform_packages_apps_Settings.git packages/apps/Settings --depth 1
+    git clone https://github.com/Pixelify-AOSP/platform_vendor_custom.git vendor/custom --depth 1
 
     pushd vendor/xiaomi/marble
     git lfs install
@@ -194,6 +196,20 @@ start_build_process() {
 
     rm -f drawable-nodpi/default_wallpaper.png
     wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/default_wallpaper.png
+    popd
+
+    pushd vendor/custom/config
+    sed -i 's|ASCP_MAINTAINER ?= Unofficial|ASCP_MAINTAINER := Hafidz_Muzakky|' version.mk
+    sed -i 's|ASCP_MAINTAINER_LINK ?= https://github.com/ASCP-staging|ASCP_MAINTAINER_LINK := https://github.com/nekoshirro|' version.mk
+    sed -i '/ASCP_REGION_CODE := ID/a\
+    \
+    ASCP_BUILD_TYPE := UNOFFICIAL\
+    ASCP_TYPE_CODE := UN' version.mk
+    sed -i '/# Verify device against official list/,/^endif/d' version.mk
+    popd
+
+    pushd packages/apps/Settings
+    sed -i 's|val maintainer = SystemProperties.get(ROM_PROPERTY, "")|val maintainer = SystemProperties.get(ROM_PROPERTY, "").replace("_", " ")|' src/com/android/settings/deviceinfo/firmwareversion/AscpMaintainerPreference.kt
     popd
 
     echo "Tree sync complete."
