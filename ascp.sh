@@ -87,6 +87,7 @@ send_telegram_file() {
   local chat_id="$1"
   local file_path="$2"
   local caption="$3"
+  local _TK="$TG_BOT_TOKEN"
 
   if [ ! -f "$file_path" ]; then
     echo "Error: File $file_path not found!"
