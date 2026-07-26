@@ -149,7 +149,10 @@ start_build_process() {
     # Clean up existing trees
     echo "Starting remove repositories..."
     rm -rf device/xiaomi/marble
+    rm -rf device/xiaomi/sm*
     rm -rf vendor/xiaomi/marble
+    rm -rf vendor/xiaomi/sm*
+    rm -rf kernel/xiaomi/sm*
     rm -rf kernel/xiaomi/marble
     rm -rf kernel/xiaomi/marble-modules
     rm -rf kernel/xiaomi/marble-devicetrees
@@ -164,6 +167,7 @@ start_build_process() {
     rm -rf vendor/*lineage-priv*
     rm -rf packages/apps/Settings
     rm -rf vendor/custom
+    rm -rf vendor/products
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
