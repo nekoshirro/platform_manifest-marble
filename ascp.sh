@@ -150,7 +150,7 @@ start_build_process() {
     echo "Starting remove repositories..."
     rm -rf device/xiaomi/marble
     rm -rf device/xiaomi/sm*
-    rm -rf vendor/xiaomi/marble
+    rm -rf vendor/xiaomi/marble*
     rm -rf vendor/xiaomi/sm*
     rm -rf kernel/xiaomi/sm*
     rm -rf kernel/xiaomi/marble
