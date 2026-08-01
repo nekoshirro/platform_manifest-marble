@@ -141,9 +141,9 @@ start_build_process() {
 
     # Resync sources
     /opt/crave/resync.sh
-    repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --force-remove-dirty
+    repo sync
     /opt/crave/resync.sh
-    repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags --force-remove-dirty
+    repo sync
     /opt/crave/resync.sh
 
     # Clean up existing trees
