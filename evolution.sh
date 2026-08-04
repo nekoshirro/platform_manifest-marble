@@ -233,6 +233,7 @@ start_build_process() {
     popd
 
     # Setup the build environment
+    export SOONG_NINJA="${SOONG_NINJA:-ninja}"
     . build/envsetup.sh
     echo "Environment setup success."
 
