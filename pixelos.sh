@@ -18,7 +18,7 @@ fi
 # =========================================================
 # This token was retrieved from your previous log for continuous functionality.
 DEVICE_CODE="marble"
-BUILD_TARGET="PixelOS"
+BUILD_TARGET="PixelOS-Ext"
 ANDROID_VERSION="16.2"
 
 # SHELL CONFIGURATION
@@ -135,9 +135,9 @@ start_build_process() {
     # ORIGINAL BUILD STEPS
     # =========================================================
 
-    # Init PixelOS 16.2 (POS-GM)
+    # Init PixelOS 16.2
     rm -rf frameworks/base build/soong prebuilt
-    repo init -u https://github.com/pos-gm/android_manifest.git -b sixteen-qpr2 --git-lfs --depth 1
+    repo init --depth=1 -u https://github.com/PixelOS-Ext/android_manifest.git -b sixteen-qpr2 --git-lfs
 
     # Resync sources
     /opt/crave/resync.sh
@@ -161,6 +161,7 @@ start_build_process() {
     rm -rf hardware/dolby
     rm -rf out/target/product/marble
     rm -rf vendor/custom/signing
+    rm -rf vendor/private/keys
     rm -rf vendor/lineage
     rm -rf frameworks/base
     echo "Successfully deleted previous repositories."
@@ -175,9 +176,9 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/nekoshirro/android_hardware_xiaomi.git hardware/xiaomi --depth 1 -b pixelos-16
-    git clone https://codeberg.org/fiqri19102002/vendor_custom_signing-keys.git vendor/custom/signing
-    git clone https://github.com/pos-gm/android_vendor_lineage.git vendor/lineage --depth 1
-    git clone https://github.com/pos-gm/android_frameworks_base.git frameworks/base --depth 1
+    git clone https://github.com/PixelOS-Ext/android_vendor_private_keys.git vendor/private/keys --depth 1
+    git clone https://github.com/PixelOS-Ext/android_vendor_lineage.git vendor/lineage --depth 1
+    git clone https://github.com/PixelOS-Ext/android_frameworks_base.git frameworks/base --depth 1
 
     pushd build/soong
     git fetch --unshallow
@@ -187,11 +188,11 @@ start_build_process() {
     popd
 
     echo "Patching time!"
-#    pushd vendor/lineage
-#    rm -rf sec*.patch*
-#    wget -O security-patch.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/security-patch.patch
-#    patch -N -p1 < security-patch.patch
-#    popd
+    pushd vendor/lineage
+    rm -rf sec*.patch*
+    wget -O security-patch.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/security-patch.patch
+    patch -N -p1 < security-patch.patch
+    popd
 
     pushd frameworks/base
     rm -rf revert*.patch*
@@ -207,6 +208,10 @@ start_build_process() {
 
     rm -f drawable-nodpi/default_wallpaper.png
     wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/evox-17/default_wallpaper.png
+    popd
+
+    pushd packages/apps/Settings
+    sed -i 's|val maintainer = SystemProperties.get(ROM_PROPERTY, "")|val maintainer = SystemProperties.get(ROM_PROPERTY, "").replace("_", " ")|' src/com/android/settings/deviceinfo/firmwareversion/CustomMaintainerPreference.kt
     popd
 
     pushd vendor/xiaomi/marble
