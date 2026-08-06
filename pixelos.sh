@@ -187,11 +187,11 @@ start_build_process() {
     popd
 
     echo "Patching time!"
-    pushd vendor/lineage
-    rm -rf sec*.patch*
-    wget -O security-patch.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/security-patch.patch
-    patch -N -p1 < security-patch.patch
-    popd
+#    pushd vendor/lineage
+#    rm -rf sec*.patch*
+#    wget -O security-patch.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/security-patch.patch
+#    patch -N -p1 < security-patch.patch
+#    popd
 
     pushd frameworks/base
     rm -rf revert*.patch*
@@ -206,7 +206,7 @@ start_build_process() {
     rm -f drawable-xxxhdpi/default_wallpaper.png
 
     rm -f drawable-nodpi/default_wallpaper.png
-    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/default_wallpaper.png
+    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/evox-17/default_wallpaper.png
     popd
 
     pushd vendor/xiaomi/marble
