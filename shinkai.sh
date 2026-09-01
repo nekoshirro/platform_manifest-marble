@@ -170,7 +170,7 @@ start_build_process() {
     git clone https://github.com/fiqri19102002/android_device_xiaomi_miuicamera-marble.git -b lineage-24.0 device/xiaomi/miuicamera-marble
     git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 17 vendor/xiaomi/marble
     git clone https://codeberg.org/fiqri19102002/proprietary_vendor_xiaomi_miuicamera-marble.git -b lineage-24.0 vendor/xiaomi/miuicamera-marble
-    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b 17 kernel/xiaomi/marble --depth 1
+    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b ksu-next-staging kernel/xiaomi/marble --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Shinkaiprjkt/hardware_xiaomi.git hardware/xiaomi --depth 1 -b heptakaideka
@@ -247,7 +247,9 @@ start_build_process() {
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE
     *Duration:* $DURATION_FORMATTED
-    *Status:* $status_text"
+    *Status:* $status_text
+
+    *THIS ROM HAS KERNELSU-NEXT PREBUILT!*"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
     if [[ -f "$LOG_FILE" ]]; then
