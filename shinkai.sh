@@ -175,7 +175,7 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Shinkaiprjkt/hardware_xiaomi.git hardware/xiaomi --depth 1 -b heptakaideka
     git clone https://github.com/PixelOS-Ext/android_vendor_private_keys.git vendor/private/keys --depth 1
-    git clone https://github.com/Shinkaiprjkt/shinkai_frameworks_base.git frameworks/base --depth 1
+    git clone https://github.com/Shinkaiprjkt/shinkai_frameworks_base.git frameworks/base --depth 1 -b heptakaideka
 
     pushd build/soong
     git fetch --unshallow
