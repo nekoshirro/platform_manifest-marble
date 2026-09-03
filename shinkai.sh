@@ -197,6 +197,23 @@ start_build_process() {
     sed -i 's|val maintainer = SystemProperties.get(ROM_PROPERTY, "")|val maintainer = SystemProperties.get(ROM_PROPERTY, "").replace("_", " ")|' src/com/android/settings/deviceinfo/firmwareversion/ShinkaiMaintainerPreference.kt
     popd
 
+    # Security Patch Hack
+    TARGET_FILE="vendor/lineage/release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto"
+    NEW_DATE="2026-09-01"
+
+    if [ -f "$TARGET_FILE" ]; then
+        if grep -qE 'string_value: "[0-9]{4}-[0-9]{2}-[0-9]{2}"' "$TARGET_FILE"; then
+            sed -i -E "s/string_value: \"[0-9]{4}-[0-9]{2}-[0-9]{2}\"/string_value: \"${NEW_DATE}\"/" "$TARGET_FILE"
+            echo "[patch] OK -> ${NEW_DATE}"
+        else
+            echo "[patch] ERROR: date pattern not found"
+            exit 1
+        fi
+    else
+        echo "[patch] ERROR: file not found: $TARGET_FILE"
+        exit 1
+    fi
+
     pushd vendor/xiaomi/marble
     git lfs install
     git lfs pull
