@@ -137,7 +137,7 @@ start_build_process() {
 
     # Init Shinkai Project
     git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
-    repo init --depth=1 -u https://github.com/Shinkaiprjkt/shinkai_manifest.git -b heptakaideka --git-lfs
+    repo init --depth=1 -u https://github.com/ShinkaiProject/shinkai_manifest.git -b heptakaideka --git-lfs
 
     # Resync sources
     /opt/crave/resync.sh
@@ -174,8 +174,8 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Shinkaiprjkt/hardware_xiaomi.git hardware/xiaomi --depth 1 -b heptakaideka
-    git clone https://github.com/PixelOS-Ext/android_vendor_private_keys.git vendor/private/keys --depth 1
-    git clone https://github.com/Shinkaiprjkt/shinkai_frameworks_base.git frameworks/base --depth 1 -b heptakaideka
+    git clone https://github.com/ShinkaiProject/shinkai_vendor_private_keys.git vendor/private/keys --depth 1
+    git clone https://github.com/ShinkaiProject/shinkai_frameworks_base.git frameworks/base --depth 1 -b heptakaideka
 
     pushd build/soong
     git fetch --unshallow
