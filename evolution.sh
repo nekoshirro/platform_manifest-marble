@@ -136,6 +136,7 @@ start_build_process() {
     # =========================================================
 
     # Init Evolution-X
+    rm -rf prebuilts/gcc
     repo init -u https://github.com/Evolution-X/manifest -b cnb --git-lfs --depth 1
 
     # Resync sources
