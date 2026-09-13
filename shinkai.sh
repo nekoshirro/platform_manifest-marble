@@ -228,6 +228,9 @@ start_build_process() {
 
     # Setup the build environment
     . build/envsetup.sh
+    pushd hardware/dolby
+    rm -rf DSP*
+    popd
     echo "Environment setup success."
 
     # Lunch target selection
