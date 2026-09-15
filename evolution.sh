@@ -171,10 +171,10 @@ start_build_process() {
     echo "Cloning device stuff..."
     # Device Trees
     git clone https://github.com/nekoshirro/platform_device_xiaomi_marble.git device/xiaomi/marble -b evox-17 --depth 1
-    git clone https://github.com/fiqri19102002/android_device_xiaomi_miuicamera-marble.git -b lineage-24.0 device/xiaomi/miuicamera-marble
+    git clone https://github.com/nekoshirro/platform_device_xiaomi_miuicamera-marble.git -b 17 device/xiaomi/miuicamera-marble
     git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 17 vendor/xiaomi/marble
-    git clone https://codeberg.org/fiqri19102002/proprietary_vendor_xiaomi_miuicamera-marble.git -b lineage-24.0 vendor/xiaomi/miuicamera-marble
-    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b 17 kernel/xiaomi/marble --depth 1
+    git clone https://codeberg.org/nekoshirro/android_vendor_xiaomi_miuicamera-marble.git -b main vendor/xiaomi/miuicamera-marble
+    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b ksu-next-staging kernel/xiaomi/marble --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b cnb-no-dolby hardware/xiaomi --depth 1
@@ -189,7 +189,7 @@ start_build_process() {
 
     pushd vendor/xiaomi/miuicamera-marble
     git lfs install
-    git lfs pull
+    git lfs pull && git lfs fetch --all
     popd
 
     pushd build/soong
@@ -251,7 +251,7 @@ start_build_process() {
     echo "========================="
     echo "Starting ROM Compilation..."
     echo "========================="
-    m evolution -j$(nproc --all) 2>&1 | tee log.txt
+    m evolution -j$(nproc --all)
 
     BUILD_STATUS=${PIPESTATUS[0]} # Capture exit code immediately
 
@@ -278,7 +278,8 @@ start_build_process() {
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE
     *Duration:* $DURATION_FORMATTED
-    *Status:* $status_text"
+    *Status:* $status_text
+    *THIS ROM HAS KERNELSU-NEXT PREBUILT!*"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
     if [[ -f "$LOG_FILE" ]]; then
