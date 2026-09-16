@@ -87,6 +87,7 @@ send_telegram_file() {
   local chat_id="$1"
   local file_path="$2"
   local caption="$3"
+  local _TK="$TG_BOT_TOKEN"
 
   if [ ! -f "$file_path" ]; then
     echo "Error: File $file_path not found!"
@@ -247,6 +248,9 @@ start_build_process() {
     lunch lineage_marble-cp2a-user
     echo "Lunch command executed."
 
+    OOM_BASELINE=$(cat /sys/fs/cgroup/memory.events 2>/dev/null | grep -E "^oom_kill" | awk '{print $2}')
+    OOM_BASELINE=${OOM_BASELINE:-0}
+
     # Build ROM
     echo "========================="
     echo "Starting ROM Compilation..."
@@ -269,6 +273,30 @@ start_build_process() {
         local status_icon="❌"
         local status_text="Failure (Exit Code: $BUILD_STATUS)"
 	LOG_FILE="out/error.log"
+    fi
+
+    OOM_INFO=""
+    if [[ $BUILD_STATUS -ne 0 ]]; then
+        OOM_AFTER=$(cat /sys/fs/cgroup/memory.events 2>/dev/null | grep -E "^oom_kill" | awk '{print $2}')
+        OOM_AFTER=${OOM_AFTER:-0}
+        OOM_DELTA=$((OOM_AFTER - OOM_BASELINE))
+ 
+        if [[ $OOM_DELTA -gt 0 ]]; then
+            OOM_VERDICT="🔴 YES — $OOM_DELTA OOM kill(s) detected during this build"
+        else
+            OOM_VERDICT="🟡 No OOM kill detected in cgroup — failure likely NOT memory-related"
+        fi
+ 
+        LAST_LINES=$(tail -n 15 "$LOG_FILE" 2>/dev/null | grep -v '^$')
+        KILL_MATCH=$(echo "$LAST_LINES" | grep -iE "killed|signal|oom" | tail -n 3)
+ 
+        OOM_INFO="
+		*OOM Diagnostic:*
+		*Verdict:* $OOM_VERDICT
+		*Last log lines:*
+		\`\`\`
+		$(echo "$LAST_LINES" | tail -n 10)
+		\`\`\`"
     fi
 
     # Final Message with Android Version
