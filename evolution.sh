@@ -290,7 +290,7 @@ start_build_process() {
         LAST_LINES=$(tail -n 15 "$LOG_FILE" 2>/dev/null | grep -v '^$')
         KILL_MATCH=$(echo "$LAST_LINES" | grep -iE "killed|signal|oom" | tail -n 3)
  
-        OOM_INFO="
+ 		OOM_INFO="
 		*OOM Diagnostic:*
 		*Verdict:* $OOM_VERDICT
 		*Last log lines:*
