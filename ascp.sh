@@ -141,9 +141,9 @@ start_build_process() {
 
     # Resync sources
     /opt/crave/resync.sh
-    repo sync
+    repo sync -c -j$(nproc --all) --force-sync --force-remove-dirty --no-clone-bundle --no-tags
     /opt/crave/resync.sh
-    repo sync
+    repo sync -c -j$(nproc --all) --force-sync --force-remove-dirty --no-clone-bundle --no-tags
     /opt/crave/resync.sh
 
     # Clean up existing trees
@@ -175,13 +175,14 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_device_xiaomi_marble.git device/xiaomi/marble -b ascp-17 --depth 1
     git clone https://github.com/nekoshirro/platform_device_xiaomi_miuicamera-marble.git -b 17 device/xiaomi/miuicamera-marble
     git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 17 vendor/xiaomi/marble
-    git clone https://codeberg.org/fiqri19102002/proprietary_vendor_xiaomi_miuicamera-marble.git vendor/xiaomi/miuicamera-marble
-    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b 16 kernel/xiaomi/marble --depth 1
+    git clone https://codeberg.org/nekoshirro/android_vendor_xiaomi_miuicamera-marble.git vendor/xiaomi/miuicamera-marble
+    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b ksu-next-staging kernel/xiaomi/marble --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b cnb-no-dolby hardware/xiaomi --depth 1
     git clone https://codeberg.org/ascp-lfs/platform_packages_apps_Settings.git packages/apps/Settings --depth 1
     git clone https://github.com/Pixelify-AOSP/platform_vendor_custom.git vendor/custom --depth 1
+    git clone https://codeberg.org/nekoshirro/android_vendor_private_keys.git vendor/private/keys --depth 1
 
     pushd vendor/xiaomi/marble
     git lfs install
@@ -190,7 +191,7 @@ start_build_process() {
 
     pushd vendor/xiaomi/miuicamera-marble
     git lfs install
-    git lfs pull
+    git lfs pull && git lfs fetch --all
     popd
 
     pushd vendor/custom/overlay/common/frameworks/base/core/res/res
@@ -200,7 +201,7 @@ start_build_process() {
     rm -f drawable-xxxhdpi/default_wallpaper.png
 
     rm -f drawable-nodpi/default_wallpaper.png
-    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/default_wallpaper.png
+    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/default_wallpaper2.png
     popd
 
     pushd vendor/custom/config
@@ -218,7 +219,14 @@ start_build_process() {
     popd
 
     pushd packages/apps/Updater
-    sed -i 's|https://raw.githubusercontent.com/ASCP OS-Devices/official_devices/bellflower/API/{device}.json|https://raw.githubusercontent.com/nekoshirro/OTA/main/builds/{device}.json|' app/src/main/res/values/strings.xml
+    sed -i 's|https://raw.githubusercontent.com/Pixelify-AOSP/official_devices/{branch}/API/updater/{device}.json|https://raw.githubusercontent.com/nekoshirro/OTA/main/builds/{device}.json|' app/src/main/res/values/strings.xml
+    popd
+
+    pushd build/soong
+    git fetch --unshallow
+    git remote add yaap-stone https://github.com/yaap-17-stone/build_soong.git
+    git fetch yaap-stone
+    git cherry-pick f9c27b0b9298f6eeee9a850346e0a646c3eaeb87
     popd
 
     echo "Tree sync complete."
@@ -262,7 +270,8 @@ start_build_process() {
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE
     *Duration:* $DURATION_FORMATTED
-    *Status:* $status_text"
+    *Status:* $status_text
+    *THIS ROM HAS KERNELSU-NEXT PREBUILT!*"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
     if [[ -f "$LOG_FILE" ]]; then
