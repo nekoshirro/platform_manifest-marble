@@ -136,7 +136,7 @@ start_build_process() {
     # =========================================================
 
     # Init Shinkai Project
-    git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+    git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/""
     repo init --depth=1 -u https://github.com/ShinkaiProject/shinkai_manifest.git -b heptakaideka --git-lfs
 
     # Resync sources
