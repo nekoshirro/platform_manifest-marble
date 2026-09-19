@@ -1,4 +1,4 @@
-# PixelOS Android 16 Build Manifest for Redmi Note 12 Turbo / POCO F5 (marble)
+# PixelOS Android 17 Build Manifest for Redmi Note 12 Turbo / POCO F5 (marble)
 
 Created and maintained by @nekoshirro — optimized for CI-based AOSP builds on Redmi Note 12 Turbo / POCO F5 (codename: marble)
 
@@ -14,7 +14,7 @@ This repository provides a customized repo manifest designed specifically for bu
 Run this command on your root ROM directory:
 
 ```bash
-curl https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/pixelos.sh | bash
+curl https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-17/pixelos.sh | bash
 ```
 
 This script will:

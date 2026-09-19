@@ -18,8 +18,8 @@ fi
 # =========================================================
 # This token was retrieved from your previous log for continuous functionality.
 DEVICE_CODE="marble"
-BUILD_TARGET="PixelOS-Ext"
-ANDROID_VERSION="16.2"
+BUILD_TARGET="PixelOS"
+ANDROID_VERSION="17"
 
 # SHELL CONFIGURATION
 export TZ="Asia/Jakarta"
@@ -87,6 +87,7 @@ send_telegram_file() {
   local chat_id="$1"
   local file_path="$2"
   local caption="$3"
+  local _TK="$TG_BOT_TOKEN"
 
   if [ ! -f "$file_path" ]; then
     echo "Error: File $file_path not found!"
@@ -135,9 +136,8 @@ start_build_process() {
     # ORIGINAL BUILD STEPS
     # =========================================================
 
-    # Init PixelOS 16.2
-    rm -rf frameworks/base build/soong prebuilt
-    repo init --depth=1 -u https://github.com/PixelOS-Ext/android_manifest.git -b sixteen-qpr2 --git-lfs
+    # Init PixelOS 17
+    repo init -u https://github.com/fiqri19102002/android_manifest.git -b seventeen --git-lfs --depth 1
 
     # Resync sources
     /opt/crave/resync.sh
@@ -168,37 +168,42 @@ start_build_process() {
 
     echo "Cloning device stuff..."
     # Device Trees
-    git clone https://github.com/nekoshirro/platform_device_xiaomi_marble.git device/xiaomi/marble -b pixelos-16 --depth 1
-    git clone https://github.com/fiqri19102002/android_device_xiaomi_miuicamera-marble.git -b lineage-23.2 device/xiaomi/miuicamera-marble
-    git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 16 vendor/xiaomi/marble
-    git clone https://codeberg.org/fiqri19102002/proprietary_vendor_xiaomi_miuicamera-marble.git -b lineage-23.2 vendor/xiaomi/miuicamera-marble
-    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b 16 kernel/xiaomi/marble --depth 1
+    git clone https://github.com/nekoshirro/platform_device_xiaomi_marble.git device/xiaomi/marble -b pixelos-17 --depth 1
+    git clone https://github.com/nekoshirro/platform_device_xiaomi_miuicamera-marble.git -b 17 device/xiaomi/miuicamera-marble
+    git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 17 vendor/xiaomi/marble
+    git clone https://codeberg.org/nekoshirro/android_vendor_xiaomi_miuicamera-marble.git vendor/xiaomi/miuicamera-marble
+    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b ksu-next-staging kernel/xiaomi/marble --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
-    git clone https://github.com/nekoshirro/android_hardware_xiaomi.git hardware/xiaomi --depth 1 -b pixelos-16
-    git clone https://github.com/PixelOS-Ext/android_vendor_private_keys.git vendor/private/keys --depth 1
-    git clone https://github.com/PixelOS-Ext/android_vendor_lineage.git vendor/lineage --depth 1
-    git clone https://github.com/PixelOS-Ext/android_frameworks_base.git frameworks/base --depth 1
+    git clone https://github.com/PixelOS-AOSP/android_hardware_xiaomi.git hardware/xiaomi --depth 1 -b seventeen
+    git clone https://github.com/ShinkaiProject/shinkai_vendor_private_keys.git vendor/private/keys --depth 1
+    git clone https://github.com/fiqri19102002/android_vendor_lineage.git -b seventeen vendor/lineage --depth 1
+    git clone https://github.com/fiqri19102002/android_frameworks_base.git -b seventeen frameworks/base --depth 1
 
     pushd build/soong
     git fetch --unshallow
-    git remote add fiqri https://github.com/fiqri19102002/android_build_soong.git
-    git fetch fiqri
-    git cherry-pick 7d0dc9b2556c684e94d09564b6d38598314b93df 479ca4d056a241e7a5994b0e6ba71c9247eed29d
+    git remote add yaap-stone https://github.com/yaap-17-stone/build_soong.git
+    git fetch yaap-stone
+    git cherry-pick f9c27b0b9298f6eeee9a850346e0a646c3eaeb87
     popd
 
     echo "Patching time!"
-    pushd vendor/lineage
-    rm -rf sec*.patch*
-    wget -O security-patch.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/security-patch.patch
-    patch -N -p1 < security-patch.patch
-    popd
+    # Security Patch Hack
+    TARGET_FILE="vendor/lineage/release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto"
+    NEW_DATE="2026-09-01"
 
-    pushd frameworks/base
-    rm -rf revert*.patch*
-    wget -O revert-split-shade.patch https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/pixelos-16/revert-split-shade.patch
-    patch -N -p1 < revert-split-shade.patch
-    popd
+    if [ -f "$TARGET_FILE" ]; then
+        if grep -qE 'string_value: "[0-9]{4}-[0-9]{2}-[0-9]{2}"' "$TARGET_FILE"; then
+            sed -i -E "s/string_value: \"[0-9]{4}-[0-9]{2}-[0-9]{2}\"/string_value: \"${NEW_DATE}\"/" "$TARGET_FILE"
+            echo "[patch] OK -> ${NEW_DATE}"
+        else
+            echo "[patch] ERROR: date pattern not found"
+            exit 1
+        fi
+    else
+        echo "[patch] ERROR: file not found: $TARGET_FILE"
+        exit 1
+    fi
 
     pushd vendor/custom/overlay/rro_packages/FrameworkOverlayCustom/res
     rm -f drawable-hdpi/default_wallpaper.png
@@ -207,11 +212,7 @@ start_build_process() {
     rm -f drawable-xxxhdpi/default_wallpaper.png
 
     rm -f drawable-nodpi/default_wallpaper.png
-    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/evox-17/default_wallpaper.png
-    popd
-
-    pushd packages/apps/Settings
-    sed -i 's|val maintainer = SystemProperties.get(ROM_PROPERTY, "")|val maintainer = SystemProperties.get(ROM_PROPERTY, "").replace("_", " ")|' src/com/android/settings/deviceinfo/firmwareversion/CustomMaintainerPreference.kt
+    wget -O drawable-nodpi/default_wallpaper.png https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/evox-17/default_wallpaper2.png
     popd
 
     pushd vendor/xiaomi/marble
@@ -221,7 +222,7 @@ start_build_process() {
 
     pushd vendor/xiaomi/miuicamera-marble
     git lfs install
-    git lfs pull
+    git lfs pull && git lfs fetch --all
     popd
 
     echo "Tree sync complete."
@@ -231,7 +232,7 @@ start_build_process() {
     echo "Environment setup success."
 
     # Lunch target selection
-    lunch custom_marble-bp4a-user
+    lunch custom_marble-cp2a-user
     echo "Lunch command executed."
 
     # Build ROM
@@ -265,7 +266,8 @@ start_build_process() {
     *Android:* $ANDROID_VERSION
     *Device:* $DEVICE_CODE
     *Duration:* $DURATION_FORMATTED
-    *Status:* $status_text"
+    *Status:* $status_text
+    *THIS ROM HAS KERNELSU-NEXT PREBUILT!*"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
     if [[ -f "$LOG_FILE" ]]; then
