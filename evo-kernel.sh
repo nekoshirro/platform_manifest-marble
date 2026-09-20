@@ -167,7 +167,7 @@ if [[ $BUILD_STATUS -eq 0 ]]; then
     DATE_TAG=$(date +%Y%m%d)
     TIME_TAG=$(date +%H%M)
 
-    FINAL_ZIP_NAME="Evo-12.x-${KERNEL_VERSION}-KSU-Next-v3.3.0-susfs-2.3.0.zip"
+    FINAL_ZIP_NAME="Evo-12.x-${KERNEL_VERSION}-KSU-Next-v3.3.0.zip"
 
     cd AnyKernel3
     zip -r9 "../$FINAL_ZIP_NAME" * -x .git README.md
@@ -181,7 +181,7 @@ if [[ $BUILD_STATUS -eq 0 ]]; then
 
 <b>Build took:</b> $((DURATION / 60)) minutes $((DURATION % 60)) seconds
 <b>MD5:</b> <code>$MD5_CHECK</code>
-<b>This kernel is based on Evolution-X kernel!</b>
+<b>This kernel is based on Evolution-X kernel! SUSFS DROPPED!</b>
 "
     send_document "$TG_BUILD_CHAT_ID" "$FINAL_ZIP_NAME" "$CAPTION"
 else
