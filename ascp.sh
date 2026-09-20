@@ -180,7 +180,7 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b cnb-no-dolby hardware/xiaomi --depth 1
-    git clone https://codeberg.org/ascp-lfs/platform_packages_apps_Settings.git packages/apps/Settings --depth 1
+    git clone https://codeberg.org/ascp/platform_packages_apps_Settings.git packages/apps/Settings --depth 1
     git clone https://github.com/Pixelify-AOSP/platform_vendor_custom.git vendor/custom --depth 1
     git clone https://codeberg.org/nekoshirro/android_vendor_private_keys.git vendor/private/keys --depth 1
 
