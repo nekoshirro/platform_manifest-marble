@@ -222,12 +222,12 @@ start_build_process() {
     sed -i 's|https://raw.githubusercontent.com/Pixelify-AOSP/official_devices/{branch}/API/updater/{device}.json|https://raw.githubusercontent.com/nekoshirro/OTA/main/builds/{device}.json|' app/src/main/res/values/strings.xml
     popd
 
-    pushd build/soong
-    git fetch --unshallow
-    git remote add yaap-stone https://github.com/yaap-17-stone/build_soong.git
-    git fetch yaap-stone
-    git cherry-pick f9c27b0b9298f6eeee9a850346e0a646c3eaeb87
-    popd
+#    pushd build/soong
+#    git fetch --unshallow
+#    git remote add yaap-stone https://github.com/yaap-17-stone/build_soong.git
+#    git fetch yaap-stone
+#    git cherry-pick f9c27b0b9298f6eeee9a850346e0a646c3eaeb87
+#    popd
 
     echo "Tree sync complete."
 
