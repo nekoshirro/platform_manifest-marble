@@ -87,6 +87,7 @@ send_telegram_file() {
   local chat_id="$1"
   local file_path="$2"
   local caption="$3"
+  local _TK="$TG_BOT_TOKEN"
 
   if [ ! -f "$file_path" ]; then
     echo "Error: File $file_path not found!"
@@ -240,7 +241,7 @@ start_build_process() {
     echo "========================="
     m shinkai -j$(nproc --all) 2>&1 | tee log.txt
 
-    BUILD_STATUS=$? # Capture exit code immediately
+    BUILD_STATUS=${PIPESTATUS[0]} # Capture exit code immediately
 
     # --- STEP 3: CALCULATE TIME AND SEND FINAL NOTIFICATION ---
     END_TIME=$(date +%s)
@@ -266,7 +267,6 @@ start_build_process() {
     *Device:* $DEVICE_CODE
     *Duration:* $DURATION_FORMATTED
     *Status:* $status_text
-
     *THIS ROM HAS KERNELSU-NEXT PREBUILT!*"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
