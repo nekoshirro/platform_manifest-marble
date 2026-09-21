@@ -241,7 +241,7 @@ start_build_process() {
     echo "========================="
     m pixelos -j$(nproc --all) 2>&1 | tee log.txt
 
-    BUILD_STATUS=$? # Capture exit code immediately
+    BUILD_STATUS=${PIPESTATUS[0]} # Capture exit code immediately
 
     # --- STEP 3: CALCULATE TIME AND SEND FINAL NOTIFICATION ---
     END_TIME=$(date +%s)
