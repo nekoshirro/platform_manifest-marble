@@ -239,7 +239,22 @@ start_build_process() {
     echo "========================="
     echo "Starting ROM Compilation..."
     echo "========================="
-    m shinkai -j$(nproc --all) 2>&1 | tee log.txt
+
+    : > log.txt
+
+    (
+      while true; do
+        echo "[memmon] === $(date +%T) ==="
+        echo "[memmon] $(free -m | sed -n 2p)"
+        echo "[memmon] cg.max=$(cat /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null | head -1) cg.peak=$(cat /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2>/dev/null | head -1)"
+        ps -eo rss,comm --sort=-rss | head -4 | sed 's/^/[memmon] /'
+        sleep 15
+      done
+    ) >> log.txt 2>&1 &
+    MEMMON_PID=$!
+    trap 'kill $MEMMON_PID 2>/dev/null' EXIT
+
+    m shinkai -j$(nproc --all) 2>&1 | tee -a log.txt
 
     BUILD_STATUS=${PIPESTATUS[0]} # Capture exit code immediately
 
