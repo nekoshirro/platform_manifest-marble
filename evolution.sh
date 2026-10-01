@@ -267,7 +267,7 @@ start_build_process() {
     MEMMON_PID=$!
     trap 'kill $MEMMON_PID 2>/dev/null' EXIT
 
-    m evolution -j$(nproc --all) 2>&1 | tee -a log.txt
+    m evolution -j$(( (($(nproc --all) << 1) + $(nproc --all)) >> 2 )) 2>&1 | tee -a log.txt
 
     BUILD_STATUS=${PIPESTATUS[0]} # Capture exit code immediately
 
