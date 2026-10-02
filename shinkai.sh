@@ -200,7 +200,7 @@ start_build_process() {
 
     # Security Patch Hack
     TARGET_FILE="vendor/lineage/release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto"
-    NEW_DATE="2026-09-01"
+    NEW_DATE="2026-10-01"
 
     if [ -f "$TARGET_FILE" ]; then
         if grep -qE 'string_value: "[0-9]{4}-[0-9]{2}-[0-9]{2}"' "$TARGET_FILE"; then
