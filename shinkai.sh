@@ -137,7 +137,18 @@ start_build_process() {
     # =========================================================
 
     # Init Shinkai Project
-    git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+    cat > ~/.gitconfig << 'EOF'
+[user]
+	name = Hafidz Muzakky
+	email = ais.muzakky@gmail.com
+[color]
+	ui = auto
+EOF
+    git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
+    echo "DEBUG: insteadOf rule configured (token masked):"
+    git config --global --get-regexp '^url\.' | sed -E 's/ghp_[A-Za-z0-9_]+/ghp_***MASKED***/g'
+
     repo init --depth=1 -u https://github.com/ShinkaiProject/shinkai_manifest.git -b heptakaideka --git-lfs
 
     # Resync sources
