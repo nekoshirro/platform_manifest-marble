@@ -174,6 +174,7 @@ EOF
     rm -rf out/target/product/marble
     rm -rf vendor/private/keys
     rm -rf frameworks/base
+    rm -rf vendor/lineage
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
@@ -187,7 +188,8 @@ EOF
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/PixelOS-AOSP/android_hardware_xiaomi.git hardware/xiaomi --depth 1 -b seventeen
     git clone https://github.com/ShinkaiProject/shinkai_vendor_private_keys.git vendor/private/keys --depth 1
-    git clone https://github.com/ShinkaiProject/shinkai_frameworks_base.git frameworks/base --depth 1 -b heptakaideka
+    git clone https://github.com/nekoshirro/shinkai_frameworks_base.git frameworks/base --depth 1 -b heptakaideka
+    git clone https://github.com/nekoshirro/shinkai_vendor_lineage.git vendor/lineage --depth 1 -b heptakaideka
 
     pushd build/soong
     git fetch --unshallow
