@@ -220,11 +220,22 @@ start_build_process() {
     git apply device-image-lineage-marble.patch
     popd
 
-    # Remove fingerprint spoofing patch
-    # pushd vendor/lineage
-    # wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/revert-fingerprint.patch
-    # patch -p1 < revert-fingerprint.patch
-    # popd
+    # Security Patch Hack
+    TARGET_FILE="vendor/lineage/release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto"
+    NEW_DATE="2026-10-01"
+
+    if [ -f "$TARGET_FILE" ]; then
+        if grep -qE 'string_value: "[0-9]{4}-[0-9]{2}-[0-9]{2}"' "$TARGET_FILE"; then
+            sed -i -E "s/string_value: \"[0-9]{4}-[0-9]{2}-[0-9]{2}\"/string_value: \"${NEW_DATE}\"/" "$TARGET_FILE"
+            echo "[patch] OK -> ${NEW_DATE}"
+        else
+            echo "[patch] ERROR: date pattern not found"
+            exit 1
+        fi
+    else
+        echo "[patch] ERROR: file not found: $TARGET_FILE"
+        exit 1
+    fi
 
     pushd vendor/lineage/overlay/common/frameworks/base/core/res/res
     rm -f drawable-nodpi/default_wallpaper.png
