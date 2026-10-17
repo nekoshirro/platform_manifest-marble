@@ -50,10 +50,11 @@ send_document() {
 
   local _TK="$TG_BOT_TOKEN"
 
-  curl -s -F chat_id="${chat_id}" \
-       -F document=@"${file_path}" \
-       -F caption="${caption}" \
-       -F parse_mode="HTML" \
+  curl -s \
+       --form-string "chat_id=${chat_id}" \
+       --form-string "caption=${caption}" \
+       --form-string "parse_mode=HTML" \
+       -F "document=@${file_path}" \
        "https://api.telegram.org/bot${_TK}/sendDocument" \
        > /dev/null
 }
@@ -114,6 +115,17 @@ git lfs pull
 git lfs fetch --all
 popd
 
+# Set timestamp to WIB
+MKCOMPILE="kernel/xiaomi/marble/scripts/mkcompile_h"
+
+sed -i 's/TIMESTAMP=`date`/TIMESTAMP=`TZ=Asia\/Jakarta date`/' "$MKCOMPILE"
+
+if grep -q 'TZ=Asia/Jakarta date' "$MKCOMPILE" && sh -n "$MKCOMPILE"; then
+    echo "mkcompile_h patched OK (WIB timestamp)"
+else
+    echo "WARNING: mkcompile_h patch failed or syntax invalid"
+fi
+
 # =========================================================
 # PREPARE BUILD ENV
 # =========================================================
@@ -160,7 +172,7 @@ send_telegram "$TG_BUILD_CHAT_ID" "$START_MSG"
 BUILD_START_TIME=$(date +%s)
 
 make kernel bootimage -j$(nproc --all)
-BUILD_STATUS=$?
+BUILD_STATUS=${PIPESTATUS[0]}
 
 # =========================================================
 # POST BUILD
@@ -211,8 +223,9 @@ else
 "
     send_telegram "$TG_BUILD_CHAT_ID" "$FAIL_MSG"
 
-    if [ -f "out/error.log" ]; then
+    if [ -s "out/error.log" ]; then
         send_document "$TG_BUILD_CHAT_ID" "out/error.log" "<b>Build Error Log</b>"
+    else
+        send_telegram "$TG_BUILD_CHAT_ID" "<b>Note:</b> The build failed, but <code>out/error.log</code> is empty or missing, so there is no log to attach."
     fi
-
 fi
