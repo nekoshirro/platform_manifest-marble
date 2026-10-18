@@ -121,17 +121,6 @@ cd KernelSU-Next
 patch -p1 < ../manager.patch
 popd
 
-# Set timestamp to WIB
-MKCOMPILE="kernel/xiaomi/marble/scripts/mkcompile_h"
-
-sed -i 's/TIMESTAMP=`date`/TIMESTAMP=`TZ=Asia\/Jakarta date`/' "$MKCOMPILE"
-
-if grep -q 'TZ=Asia/Jakarta date' "$MKCOMPILE" && sh -n "$MKCOMPILE"; then
-    echo "mkcompile_h patched OK (WIB timestamp)"
-else
-    echo "WARNING: mkcompile_h patch failed or syntax invalid"
-fi
-
 # =========================================================
 # PREPARE BUILD ENV
 # =========================================================
