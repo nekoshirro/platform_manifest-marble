@@ -49,10 +49,11 @@ send_document() {
 
   local _TK="$TG_BOT_TOKEN"
 
-  curl -s -F chat_id="${chat_id}" \
-       -F document=@"${file_path}" \
-       -F caption="${caption}" \
-       -F parse_mode="HTML" \
+  curl -s \
+       --form-string "chat_id=${chat_id}" \
+       --form-string "caption=${caption}" \
+       --form-string "parse_mode=HTML" \
+       -F "document=@${file_path}" \
        "https://api.telegram.org/bot${_TK}/sendDocument" \
        > /dev/null
 }
@@ -150,7 +151,7 @@ send_telegram "$TG_BUILD_CHAT_ID" "$START_MSG"
 BUILD_START_TIME=$(date +%s)
 
 make kernel bootimage -j$(nproc --all)
-BUILD_STATUS=$?
+BUILD_STATUS=${PIPESTATUS[0]}
 
 # =========================================================
 # POST BUILD
@@ -167,7 +168,7 @@ if [[ $BUILD_STATUS -eq 0 ]]; then
     DATE_TAG=$(date +%Y%m%d)
     TIME_TAG=$(date +%H%M)
 
-    FINAL_ZIP_NAME="Evo-12.x-${KERNEL_VERSION}-KSU-Next-v3.4.0-susfs-2.3.0.zip"
+    FINAL_ZIP_NAME="Evo-12.x-${KERNEL_VERSION}-KSU-Next-v3.4.2.zip"
 
     cd AnyKernel3
     zip -r9 "../$FINAL_ZIP_NAME" * -x .git README.md
@@ -192,8 +193,10 @@ else
 "
     send_telegram "$TG_BUILD_CHAT_ID" "$FAIL_MSG"
 
-    if [ -f "out/error.log" ]; then
+    if [ -s "out/error.log" ]; then
         send_document "$TG_BUILD_CHAT_ID" "out/error.log" "<b>Build Error Log</b>"
+    else
+        send_telegram "$TG_BUILD_CHAT_ID" "<b>Note:</b> The build failed, but <code>out/error.log</code> is empty or missing, so there is no log to attach."
     fi
 
 fi
