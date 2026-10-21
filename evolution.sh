@@ -193,11 +193,22 @@ start_build_process() {
     git lfs pull && git lfs fetch --all
     popd
 
+    # OOM Fix
     pushd build/soong
-    git fetch --unshallow
-    git remote add yaap-stone https://github.com/yaap-17-stone/build_soong.git
-    git fetch yaap-stone
-    git cherry-pick f9c27b0b9298f6eeee9a850346e0a646c3eaeb87
+    grep -q "func HighmemPool()" android/defs.go || sed -i '/highmemPool = blueprint.NewBuiltinPool("highmem_pool")/!b;n;a\\n// HighmemPool returns the pool used to limit processes that need significant RAM.\nfunc HighmemPool() blueprint.Pool {\n\treturn highmemPool\n}' android/defs.go
+    grep -q "ruleParamsRE.Pool = nil" android/package_ctx.go || sed -i '/func (p PackageContext) MultiCommandRemoteStaticRules/,/ruleParamsRE := ruleParams/ s/\(ruleParamsRE := ruleParams\)/\1\n\truleParamsRE.Pool = nil/' android/package_ctx.go
+    grep -q "Pool: android.HighmemPool()" java/dex.go || {
+        sed -i '/var d8IncR8, d8IncR8RE =/,/CommandDeps:/ s/^\(\t\tCommandDeps:\)/\t\tPool: android.HighmemPool(),\n\1/' java/dex.go
+        sed -i '/var d8r8, d8r8RE =/,/CommandDeps:/ s/^\(\t\tCommandDeps:\)/\t\tPool: android.HighmemPool(),\n\1/' java/dex.go
+        sed -i '/var r8, r8RE =/,/CommandDeps:/ s/^\(\t\tCommandDeps:\)/\t\tPool:    android.HighmemPool(),\n\1/' java/dex.go
+    }
+    grep -q "runtime/debug" cmd/soong_build/main.go || sed -i '/"runtime"/a \\t"runtime/debug"' cmd/soong_build/main.go
+    grep -q "SetMemoryLimit" cmd/soong_build/main.go || sed -i '/func main() {/a \\tdebug.SetMemoryLimit(40 * 1024 * 1024 * 1024)\n\tdebug.SetGCPercent(25)\n' cmd/soong_build/main.go
+    popd
+
+    pushd vendor/lineage
+    grep -q "KATI_NINJA_POOL := highmem_pool" build/tasks/kernel.mk || \
+        sed -i '/\$(TARGET_PREBUILT_INT_KERNEL): \$(KERNEL_CONFIG)/i \$(TARGET_PREBUILT_INT_KERNEL): .KATI_NINJA_POOL := highmem_pool' build/tasks/kernel.mk
     popd
 
     # Set OTA Updater json into custom link json
