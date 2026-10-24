@@ -175,7 +175,7 @@ start_build_process() {
     git clone https://github.com/nekoshirro/platform_device_xiaomi_miuicamera-marble.git -b 17 device/xiaomi/miuicamera-marble
     git clone https://github.com/nekoshirro/platform_vendor_xiaomi_marble.git -b 17 vendor/xiaomi/marble
     git clone https://codeberg.org/nekoshirro/android_vendor_xiaomi_miuicamera-marble.git -b main vendor/xiaomi/miuicamera-marble
-    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b resukisu-staging kernel/xiaomi/marble --depth 1
+    git clone --recurse-submodules https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git -b 17 kernel/xiaomi/marble --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-devicetrees.git kernel/xiaomi/marble-devicetrees --depth 1
     git clone https://github.com/nekoshirro/platform_kernel_xiaomi_marble-modules.git kernel/xiaomi/marble-modules --depth 1
     git clone https://github.com/Evolution-X-Devices/hardware_xiaomi.git -b cnb-no-dolby hardware/xiaomi --depth 1
@@ -189,6 +189,11 @@ start_build_process() {
     popd
 
     pushd vendor/xiaomi/miuicamera-marble
+    git lfs install
+    git lfs pull && git lfs fetch --all
+    popd
+
+    pushd vendor/gms
     git lfs install
     git lfs pull && git lfs fetch --all
     popd
@@ -317,7 +322,6 @@ start_build_process() {
     *Device:* $DEVICE_CODE
     *Duration:* $DURATION_FORMATTED
     *Status:* $status_text
-    *THIS ROM HAS ReSukiSU (BakaSU) PREBUILT!*"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
     if [[ -f "$LOG_FILE" ]]; then
