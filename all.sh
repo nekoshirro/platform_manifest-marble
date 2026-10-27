@@ -1,22 +1,19 @@
 #!/bin/bash
 
-# Non-root Kernel
-rm -rf non-root.sh
-wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/kernel/non-root.sh
-chmod +x non-root.sh
-./non-root.sh
-rm -rf non-root.sh
+BASE_URL="https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/kernel"
+FAILED=""
 
-# ReSukiSU Kernel
-rm -rf resukisu.sh
-wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/kernel/resukisu.sh
-chmod +x resukisu.sh
-./resukisu.sh
-rm -rf resukisu.sh
+for script in non-root.sh resukisu.sh kernelsu-next.sh sukisu.sh; do
+    rm -f "$script"
+    if wget -qO "$script" "${BASE_URL}/${script}" && [ -s "$script" ]; then
+        chmod +x "$script"
+        ./"$script" || FAILED="$FAILED $script"
+        export SKIP_SYNC=1
+    else
+        echo "WARNING: Failed to download $script"
+        FAILED="$FAILED $script"
+    fi
+    rm -f "$script"
+done
 
-# KernelSU-Next kernel
-rm -rf kernelsu-next.sh
-wget https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/kernel/kernelsu-next.sh
-chmod +x kernelsu-next.sh
-./kernelsu-next.sh
-rm -rf kernelsu-next.sh
+[ -z "$FAILED" ] || { echo "Failed variants:$FAILED"; exit 1; }
