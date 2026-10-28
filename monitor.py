@@ -286,6 +286,7 @@ class BuildState:
                         self.compile_start_time = time.time()
                     if self.status not in ("FAILED", "SUCCESS", "CANCELLED", "PACKAGING", "UPLOADING"):
                         self.status = "COMPILING"
+                        self.phase_detail = "Compiling system image"
                     self.cur_tasks = cur
                     self.total_tasks = total
                     if total > 0 and self.status == "COMPILING":
