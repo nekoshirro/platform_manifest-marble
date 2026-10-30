@@ -19,7 +19,7 @@ source "$SECRETS_FILE"
 set +a
 
 BUILD_ROOT="$(pwd)/llvm-build"
-TARGET_VERSIONS=(${*:-22})
+TARGET_VERSIONS=(${*:-23})
 VERSIONS_DISPLAY="${TARGET_VERSIONS[*]}"
 
 msg "========================================================"
