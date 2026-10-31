@@ -14,7 +14,8 @@ export DEVICE_DISPLAY="Redmi Note 12 Turbo"
 export DEVICE_NAME="Redmi Note 12 Turbo"
 export KERNEL_NAME="[Re]Shinomiya"
 export ROOT_VARIANT="Non-root"
-export COMPILER_NAME="🧪Alchemist LLVM clang version 22.1.4"
+export CLANG_MAJOR="${CLANG_MAJOR:-23}"
+export COMPILER_NAME="🧪Alchemist LLVM Clang ${CLANG_MAJOR}"
 export TZ="Asia/Jakarta"
 export ARCH="arm64"
 export SUBARCH="arm64"
@@ -191,19 +192,50 @@ sync_git_repo() {
 }
 
 CLANG_DIR="$ROOT_DIR/toolchain/Alchemist-LLVM"
-if [ ! -f "$CLANG_DIR/.lfs_ok" ] || [ ! -x "$CLANG_DIR/bin/clang" ]; then
-    echo "Cloning Alchemist-LLVM toolchain..." | tee -a "$LOG_FILE"
+mkdir -p "$ROOT_DIR/toolchain"
+
+echo "Checking latest Alchemist LLVM (Clang $CLANG_MAJOR) release from GitHub..." | tee -a "$LOG_FILE"
+LATEST_RELEASE_JSON=$(curl -sL --max-time 15 "https://api.github.com/repos/nekoshirro/Alchemist-LLVM/releases/latest" 2>/dev/null || true)
+CLANG_URL=$(echo "$LATEST_RELEASE_JSON" | jq -r ".assets[] | select((.name | startswith(\"Alchemist-LLVM-${CLANG_MAJOR}-\")) and (.name | endswith(\".tar.xz\"))) | .browser_download_url" 2>/dev/null | head -n1)
+if [ -z "$CLANG_URL" ] || [ "$CLANG_URL" = "null" ]; then
+    CLANG_URL=$(echo "$LATEST_RELEASE_JSON" | grep "browser_download_url" | grep "Alchemist-LLVM-${CLANG_MAJOR}-" | grep -o 'https://[^"]*' | head -n1)
+fi
+
+# Fallback to known release URL if GitHub API query fails
+if [ -z "$CLANG_URL" ] || [ "$CLANG_URL" = "null" ]; then
+    CLANG_URL="https://github.com/nekoshirro/Alchemist-LLVM/releases/download/lto-20261030/Alchemist-LLVM-${CLANG_MAJOR}-20261030.tar.xz"
+fi
+
+ASSET_NAME=$(basename "$CLANG_URL")
+
+if [ ! -x "$CLANG_DIR/bin/clang" ] || [ ! -f "$CLANG_DIR/.asset_tag" ] || [ "$(cat "$CLANG_DIR/.asset_tag" 2>/dev/null)" != "$ASSET_NAME" ]; then
+    echo "Downloading latest Alchemist-LLVM ($ASSET_NAME)..." | tee -a "$LOG_FILE"
     rm -rf "$CLANG_DIR"
-    mkdir -p "$ROOT_DIR/toolchain"
-    git clone https://gitlab.com/nekoshirro/Alchemist-LLVM -b clang-22-LTO "$CLANG_DIR" --depth 1 2>&1 | tee -a "$LOG_FILE" || die "clone Alchemist-LLVM failed"
-    (git -C "$CLANG_DIR" lfs install && git -C "$CLANG_DIR" lfs pull) 2>&1 | tee -a "$LOG_FILE" || die "LFS pull Alchemist-LLVM failed"
-    touch "$CLANG_DIR/.lfs_ok"
+    mkdir -p "$CLANG_DIR"
+    ARCHIVE_PATH="$ROOT_DIR/toolchain/$ASSET_NAME"
+    if ! curl -fSL --retry 3 --connect-timeout 30 "$CLANG_URL" -o "$ARCHIVE_PATH"; then
+        wget -qO "$ARCHIVE_PATH" "$CLANG_URL" || die "failed to download $ASSET_NAME"
+    fi
+    echo "Extracting $ASSET_NAME..." | tee -a "$LOG_FILE"
+    tar -xf "$ARCHIVE_PATH" -C "$CLANG_DIR" 2>&1 | tee -a "$LOG_FILE" || die "failed to extract $ASSET_NAME"
+    rm -f "$ARCHIVE_PATH"
+    echo "$ASSET_NAME" > "$CLANG_DIR/.asset_tag"
+    echo "Alchemist-LLVM $ASSET_NAME extracted successfully." | tee -a "$LOG_FILE"
 else
-    echo "Using existing Alchemist-LLVM toolchain in $CLANG_DIR..." | tee -a "$LOG_FILE"
+    echo "Using existing Alchemist-LLVM toolchain ($ASSET_NAME) in $CLANG_DIR..." | tee -a "$LOG_FILE"
 fi
 
 export PATH="$CLANG_DIR/bin:$PATH"
 which clang >/dev/null 2>&1 || die "clang binary not found in $CLANG_DIR/bin"
+
+# Dynamically resolve exact compiler version for Telegram & logs
+RAW_CLANG_VER=$("$CLANG_DIR/bin/clang" --version 2>/dev/null | head -n1 | sed -e 's/  */ /g' -e 's/[<>]//g')
+if echo "$RAW_CLANG_VER" | grep -qi "Alchemist"; then
+    export COMPILER_NAME="$RAW_CLANG_VER"
+else
+    export COMPILER_NAME="🧪Alchemist LLVM $RAW_CLANG_VER"
+fi
+echo "Compiler: $COMPILER_NAME" | tee -a "$LOG_FILE"
 
 DEVICE_DIR="$ROOT_DIR/device/xiaomi/marble"
 sync_git_repo "$DEVICE_DIR" "https://github.com/nekoshirro/platform_device_xiaomi_marble.git" "alchemist-llvm" "0"

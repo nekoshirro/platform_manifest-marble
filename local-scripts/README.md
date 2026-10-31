@@ -42,3 +42,4 @@ cd kernel-build_marble
 2. **Dependency Installation**: Automatically installs missing toolchain packages (`bc`, `bison`, `flex`, `libelf-dev`, `ccache`, `kmod`, etc.).
 3. **20 GB Swap Allocation**: Instantly allocates 20 GB swap using `fallocate` so Full LTO (`vmlinux.o`) never gets killed by OOM.
 4. **Automated Sequential Build**: Runs each variant one by one (Telegram notifications and AnyKernel3 `.zip` uploads are handled directly by each variant script), cleaning the kernel tree in between builds to preserve disk space.
+5. **Dynamic Clang Toolchain Management**: Automatically resolves and downloads the latest **Alchemist LLVM Clang 23** release from GitHub (`nekoshirro/Alchemist-LLVM`), caching the toolchain across variant builds and reporting the exact compiler version in Telegram notifications.
