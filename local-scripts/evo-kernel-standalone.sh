@@ -514,9 +514,4 @@ if ! send_document "$TG_ADMIN_CHAT_ID" "$ROOT_DIR/$FINAL_ZIP_NAME" "$CAPTION"; t
     send_telegram "$TG_ADMIN_CHAT_ID" "<b>⚠️ Warning:</b> Kernel zip built successfully but Telegram upload failed: <code>$FINAL_ZIP_NAME</code>"
 fi
 
-if [ -f "$LOG_FILE" ]; then
-    echo "Uploading log.txt to Telegram..." | tee -a "$LOG_FILE"
-    send_document "$TG_ADMIN_CHAT_ID" "$LOG_FILE" "<b>📄 Build Log (Success)</b>" || true
-fi
-
 echo "Build Succeeded: $FINAL_ZIP_NAME (MD5: $MD5_CHECK)"
