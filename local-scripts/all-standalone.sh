@@ -110,15 +110,11 @@ case "$TARGET" in
     "kernelsu-next"|"ksun"|"kernelsu-next.sh"|"kernelsu-next-standalone.sh")
         BUILD_VARIANTS=("kernelsu-next-standalone.sh")
         ;;
-    "sukisu"|"sukisu-ultra"|"sukisu.sh"|"sukisu-standalone.sh")
-        BUILD_VARIANTS=("sukisu-standalone.sh")
-        ;;
     "all"|*)
         BUILD_VARIANTS=(
             "non-root-standalone.sh"
             "resukisu-standalone.sh"
             "kernelsu-next-standalone.sh"
-            "sukisu-standalone.sh"
         )
         ;;
 esac

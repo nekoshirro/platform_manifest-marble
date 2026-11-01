@@ -14,7 +14,6 @@ Designed for direct execution on **Ubuntu-SSH** (GitHub Actions runner via SSH) 
 | `non-root-standalone.sh` | Non-root (Vanilla) | `17` | `[Re]Shinomiya-marble-5.10.x-<date>-<time>.zip` |
 | `resukisu-standalone.sh` | ReSukiSU | `resukisu-staging` | `[Re]Shinomiya-marble-5.10.x-<date>-<time>-ReSukiSU.zip` |
 | `kernelsu-next-standalone.sh` | KernelSU-Next | `ksu-next-staging` | `[Re]Shinomiya-marble-5.10.x-<date>-<time>-KSUN.zip` |
-| `sukisu-standalone.sh` | SukiSU-Ultra (with KPM) | `sukisu-staging` | `[Re]Shinomiya-marble-5.10.x-<date>-<time>-SukiSU.zip` |
 
 ---
 
@@ -31,7 +30,6 @@ cd kernel-build_marble
 ./all-standalone.sh
 
 # Or build a specific variant:
-./all-standalone.sh sukisu
 ./all-standalone.sh ksun
 ./all-standalone.sh resukisu
 ./all-standalone.sh non-root
