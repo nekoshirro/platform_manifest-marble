@@ -4,6 +4,68 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit 1
 
+show_help() {
+    local exit_code="${1:-0}"
+    echo "Usage: $0 [variant ...]"
+    echo ""
+    echo "Available variants:"
+    echo "  all                  Build all standard [Re]Shinomiya variants (default)"
+    echo "  non-root | vanilla   Build Non-root (Vanilla) variant"
+    echo "  resukisu             Build ReSukiSU variant"
+    echo "  kernelsu-next | ksun Build KernelSU-Next variant"
+    echo "  evo-kernel | evo     Build Evolution-X kernel variant"
+    echo ""
+    echo "Examples:"
+    echo "  $0                   # Build all standard variants"
+    echo "  $0 kernelsu-next     # Build only KernelSU-Next"
+    echo "  $0 ksun resukisu     # Build KernelSU-Next and ReSukiSU"
+    echo "  $0 evo               # Build Evolution-X kernel"
+    exit "$exit_code"
+}
+
+# Parse and validate target build variants upfront
+BUILD_VARIANTS=()
+if [ $# -eq 0 ] || [ "$1" = "all" ]; then
+    BUILD_VARIANTS=(
+        "non-root-standalone.sh"
+        "resukisu-standalone.sh"
+        "kernelsu-next-standalone.sh"
+    )
+else
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help|help)
+                show_help 0
+                ;;
+            non-root|nonroot|vanilla|non-root.sh|non-root-standalone.sh)
+                BUILD_VARIANTS+=("non-root-standalone.sh")
+                ;;
+            resukisu|resuki|resukisu.sh|resukisu-standalone.sh)
+                BUILD_VARIANTS+=("resukisu-standalone.sh")
+                ;;
+            kernelsu-next|ksun|ksu|kernelsu|kernelsu-next.sh|kernelsu-next-standalone.sh)
+                BUILD_VARIANTS+=("kernelsu-next-standalone.sh")
+                ;;
+            evo|evox|evo-kernel|evo-kernel.sh|evo-kernel-standalone.sh)
+                BUILD_VARIANTS+=("evo-kernel-standalone.sh")
+                ;;
+            all)
+                BUILD_VARIANTS=(
+                    "non-root-standalone.sh"
+                    "resukisu-standalone.sh"
+                    "kernelsu-next-standalone.sh"
+                )
+                break
+                ;;
+            *)
+                echo "❌ Unknown variant: '$arg'"
+                echo ""
+                show_help 1
+                ;;
+        esac
+    done
+fi
+
 # ==============================================================================
 # 1. UBUNTU-SSH / RUNNER ENVIRONMENT AUTO-PREPARATION
 # ==============================================================================
@@ -98,26 +160,6 @@ fi
 
 BASE_URL="https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/kernel/local-scripts"
 ROOT_RAW_URL="https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/kernel"
-TARGET="${1:-all}"
-
-case "$TARGET" in
-    "non-root"|"non-root.sh"|"non-root-standalone.sh")
-        BUILD_VARIANTS=("non-root-standalone.sh")
-        ;;
-    "resukisu"|"resukisu.sh"|"resukisu-standalone.sh")
-        BUILD_VARIANTS=("resukisu-standalone.sh")
-        ;;
-    "kernelsu-next"|"ksun"|"kernelsu-next.sh"|"kernelsu-next-standalone.sh")
-        BUILD_VARIANTS=("kernelsu-next-standalone.sh")
-        ;;
-    "all"|*)
-        BUILD_VARIANTS=(
-            "non-root-standalone.sh"
-            "resukisu-standalone.sh"
-            "kernelsu-next-standalone.sh"
-        )
-        ;;
-esac
 
 TOTAL_VARIANTS=${#BUILD_VARIANTS[@]}
 CURRENT_INDEX=0
@@ -127,7 +169,8 @@ ALL_START_TIME=$(date +%s)
 echo ""
 echo "==========================================================="
 echo " Starting Build Suite ($TOTAL_VARIANTS variant(s))"
-echo " Time: $(TZ="Asia/Jakarta" date +'%Y-%m-%d %H:%M:%S WIB')"
+echo " Target Queue  : ${BUILD_VARIANTS[*]}"
+echo " Time          : $(TZ="Asia/Jakarta" date +'%Y-%m-%d %H:%M:%S WIB')"
 echo "==========================================================="
 
 # ==============================================================================

@@ -29,10 +29,14 @@ cd kernel-build_marble
 # 2. Build all variants sequentially:
 ./all-standalone.sh
 
-# Or build a specific variant:
-./all-standalone.sh ksun
+# Or build specific variant(s):
+./all-standalone.sh kernelsu-next
 ./all-standalone.sh resukisu
 ./all-standalone.sh non-root
+./all-standalone.sh evo
+
+# Or build multiple selected variants:
+./all-standalone.sh ksun resukisu
 ```
 
 ### What `all-standalone.sh` does automatically:
