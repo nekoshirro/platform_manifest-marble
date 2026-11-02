@@ -223,6 +223,76 @@ sync_git_repo "$DEVICE_DIR" "https://github.com/nekoshirro/platform_device_xiaom
 KERNEL_SRC="$ROOT_DIR/kernel/xiaomi/sm8450"
 sync_git_repo "$KERNEL_SRC" "https://github.com/nekoshirro/platform_kernel_xiaomi_marble.git" "evox-ksun" "1"
 
+echo "Applying KernelSU-Next multi-manager patch..." | tee -a "$LOG_FILE"
+git -C "$KERNEL_SRC/KernelSU-Next" checkout -- kernel/Kbuild kernel/manager/apk_sign.c 2>/dev/null || true
+patch -d "$KERNEL_SRC/KernelSU-Next" -p1 << 'EOF' 2>&1 | tee -a "$LOG_FILE" || die "Apply multi-manager patch failed"
+diff --git a/kernel/Kbuild b/kernel/Kbuild
+index f8fc9a9..35c873f 100644
+--- a/kernel/Kbuild
++++ b/kernel/Kbuild
+@@ -173,12 +173,9 @@ endif
+ KSU_NEW_DCACHE_FLUSH := $(shell grep -q __flush_dcache_area $(srctree)/arch/arm64/include/asm/cacheflush.h ; echo $$?)
+ $(info -- KernelSU-Next new DCACHE flush: $(KSU_NEW_DCACHE_FLUSH))
+ 
+-ifndef KSU_NEXT_MANAGER_SIZE
+-KSU_NEXT_MANAGER_SIZE := 0x3e6
+-endif
+-
+-ifndef KSU_NEXT_MANAGER_HASH
+-KSU_NEXT_MANAGER_HASH := 79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7
++ifndef KSU_NEXT_MANAGER_LIST
++# KSUN, pershoot, KOWSU, MamboSU , RKSU, WildKSU, SukiSU, KernelSU , ReSukiSU
++KSU_NEXT_MANAGER_LIST := 0x3e6:79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7,0x338:f26471a28031130362bce7eebffb9a0b8afc3095f163ce0c75a309f03b644a1f,0x375:484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588,0x384:a9462b8b98ea1ca7901b0cbdcebfaa35f0aa95e51b01d66e6b6d2c81b97746d8,0x396:f415f4ed9435427e1fdf7f1fccd4dbc07b3d6b8751e4dbcec6f19671f427870b,0x381:52d52d8c8bfbe53dc2b6ff1c613184e2c03013e090fe8905d8e3d5dc2658c2e4,0x35c:947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef,0x033b:c371061b19d8c7d7d6133c6a9bafe198fa944e50c1b31c9d8daa8d7f1fc2d2d6,0x377:d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64
+ endif
+ 
+ ifdef KSU_MANAGER_PACKAGE
+@@ -186,11 +183,8 @@ ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
+ $(info -- KernelSU-Next Manager package name: $(KSU_MANAGER_PACKAGE))
+ endif
+ 
+-$(info -- KernelSU-Next Manager signature size: $(KSU_NEXT_MANAGER_SIZE))
+-$(info -- KernelSU-Next Manager signature hash: $(KSU_NEXT_MANAGER_HASH))
+-
+-ccflags-y += -DEXPECTED_MANAGER_SIZE=$(KSU_NEXT_MANAGER_SIZE)
+-ccflags-y += -DEXPECTED_MANAGER_HASH=\"$(KSU_NEXT_MANAGER_HASH)\"
++$(info -- KernelSU-Next Manager signatures: $(KSU_NEXT_MANAGER_LIST))
++ccflags-y += -DKSU_NEXT_MANAGER_LIST=\"$(KSU_NEXT_MANAGER_LIST)\"
+ 
+ ccflags-y += -DKSU_NEW_DCACHE_FLUSH=$(KSU_NEW_DCACHE_FLUSH)
+ 
+diff --git a/kernel/manager/apk_sign.c b/kernel/manager/apk_sign.c
+index edec5bb..327b326 100644
+--- a/kernel/manager/apk_sign.c
++++ b/kernel/manager/apk_sign.c
+@@ -330,5 +330,25 @@ int get_pkg_from_apk_dir_path(char *pkg, const char *path)
+ 
+ bool is_manager_apk(char *path)
+ {
+-	return check_v2_signature(path, EXPECTED_MANAGER_SIZE, EXPECTED_MANAGER_HASH);
++	const char *p = KSU_NEXT_MANAGER_LIST;
++
++	while (*p) {
++		unsigned int size;
++		char hash[65] = {0};
++
++		if (sscanf(p, "%x:%64[^,]", &size, hash) == 2) {
++			if (check_v2_signature(path, size, hash)) {
++				pr_info("KernelSU: matched manager APK: %s (size=0x%x, hash=%s)\n",
++					path, size, hash);
++				return true;
++			}
++		}
++
++		p = strchr(p, ',');
++		if (!p)
++			break;
++		p++; // skip comma
++	}
++
++	return false;
+ }
+EOF
+
 mkdir -p "$ROOT_DIR/kernel/xiaomi"
 ln -sfn "$KERNEL_SRC" "$ROOT_DIR/kernel/xiaomi/marble"
 
