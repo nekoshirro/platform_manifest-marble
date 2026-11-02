@@ -175,7 +175,13 @@ rm -f /tmp/maintainer.patch /tmp/device-image.patch
 
 TARGET_FILE="vendor/lineage/release/flag_values/cp2a/RELEASE_PLATFORM_SECURITY_PATCH.textproto"
 if [ -f "$TARGET_FILE" ]; then
-    sed -i -E 's/string_value: "[0-9]{4}-[0-9]{2}-[0-9]{2}"/string_value: "2026-10-01"/' "$TARGET_FILE"
+    sed -i -E 's/string_value: "[0-9]{4}-[0-9]{2}-[0-9]{2}"/string_value: "2026-11-01"/' "$TARGET_FILE"
+fi
+
+VERSION_MK="vendor/lineage/config/version.mk"
+[ -f "$VERSION_MK" ] || VERSION_MK="vendor/evolution/config/version.mk"
+if [ -f "$VERSION_MK" ]; then
+    sed -i 's/EVO_VERSION_BASE := .*/EVO_VERSION_BASE := 12.4/' "$VERSION_MK"
 fi
 
 WP_DST="vendor/lineage/overlay/common/frameworks/base/core/res/res/drawable-nodpi/default_wallpaper.png"
