@@ -169,7 +169,6 @@ ALL_START_TIME=$(date +%s)
 echo ""
 echo "==========================================================="
 echo " Starting Build Suite ($TOTAL_VARIANTS variant(s))"
-echo " Target Queue  : ${BUILD_VARIANTS[*]}"
 echo " Time          : $(TZ="Asia/Jakarta" date +'%Y-%m-%d %H:%M:%S WIB')"
 echo "==========================================================="
 
