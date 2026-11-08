@@ -1,0 +1,56 @@
+diff --git a/src/com/android/settings/deviceinfo/hardwareinfo/ModelPageController.java b/src/com/android/settings/deviceinfo/hardwareinfo/ModelPageController.java
+index 7b1664d..b3ba905 100644
+--- a/src/com/android/settings/deviceinfo/hardwareinfo/ModelPageController.java
++++ b/src/com/android/settings/deviceinfo/hardwareinfo/ModelPageController.java
+@@ -128,6 +128,7 @@ public class ModelPageController extends BasePreferenceController {
+     private static final int LINEAGE_MAX_VARIANTS = 8;
+     private static final String EVO_OTA_URL =
+             "https://raw.githubusercontent.com/Evolution-X/OTA/%s/builds/%s.json";
++    private static final String UNOFFICIAL_MAINTAINER_GITHUB = "nekoshirro";
+ 
+     // Branch lookup order for OTA JSON resolution. CNB (Android 17) is tried
+     // first; bka (Android 16) is the legacy fallback for devices that don't
+@@ -1131,7 +1132,13 @@ public class ModelPageController extends BasePreferenceController {
+      */
+     private void showOverlayMaintainerFallback(LayoutPreference layoutPref) {
+         String summary = UrlUtils.trimToEmpty(mContext.getString(R.string.build_maintainer_summary));
+-        if (summary.isEmpty() || summary.equalsIgnoreCase("Unknown")) return;
++        if (summary.isEmpty() || summary.equalsIgnoreCase("Unknown")) {
++            if (!UNOFFICIAL_MAINTAINER_GITHUB.isEmpty()) {
++                summary = UNOFFICIAL_MAINTAINER_GITHUB;
++            } else {
++                return;
++            }
++        }
+ 
+         String donateUrl = UrlUtils.trimToEmpty(
+                 mContext.getString(R.string.build_maintainer_donate_url));
+@@ -1167,6 +1174,9 @@ public class ModelPageController extends BasePreferenceController {
+             final String overlayDonateUrl;
+             if (data == null || data.maintainer == null || data.maintainer.isEmpty()) {
+                 String summary = UrlUtils.trimToEmpty(mContext.getString(R.string.build_maintainer_summary));
++                if (summary.equalsIgnoreCase("Unknown") && !UNOFFICIAL_MAINTAINER_GITHUB.isEmpty()) {
++                    summary = UNOFFICIAL_MAINTAINER_GITHUB;
++                }
+                 overlayMaintainer = summary.equalsIgnoreCase("Unknown") ? null : summary;
+                 overlayDonateUrl  = UrlUtils.trimToEmpty(mContext.getString(R.string.build_maintainer_donate_url));
+             } else {
+@@ -1246,7 +1256,17 @@ public class ModelPageController extends BasePreferenceController {
+         } else {
+             if (badgeView != null) badgeView.setVisibility(View.GONE);
+             final String donateUrl = UrlUtils.sanitizeUrl(overlayDonateUrl);
+-            setupMaintainerActions(card, support, null, donateUrl);
++            final String unofficialGithubUrl = UNOFFICIAL_MAINTAINER_GITHUB.isEmpty()
++                    ? null : "https://github.com/" + UNOFFICIAL_MAINTAINER_GITHUB;
++            setupMaintainerActions(card, support, unofficialGithubUrl, donateUrl);
++
++            if (avatarView != null && !UNOFFICIAL_MAINTAINER_GITHUB.isEmpty()) {
++                loadGithubAvatar(layoutPref, UNOFFICIAL_MAINTAINER_GITHUB);
++                avatarView.setClickable(true);
++                avatarView.setFocusable(true);
++                avatarView.setOnClickListener(v ->
++                        openUrl("https://github.com/" + UNOFFICIAL_MAINTAINER_GITHUB));
++            }
+         }
+ 
+         card.setVisibility(View.VISIBLE);

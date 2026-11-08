@@ -14,7 +14,7 @@ This repository provides a customized repo manifest designed specifically for bu
 Run this command on your root ROM directory:
 
 ```bash
-curl https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox/evolution.sh | bash
+curl https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/evox-17/evolution.sh | bash
 ```
 
 This script will:
