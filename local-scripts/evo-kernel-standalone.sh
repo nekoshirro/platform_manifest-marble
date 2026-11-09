@@ -145,10 +145,17 @@ if [ ! -f "$TOOLS_DIR/fdtoverlaymerge" ] || [ ! -x "$TOOLS_DIR/fdtoverlaymerge" 
     [ -f "$TOOLS_DIR/fdtoverlaymerge" ] && chmod +x "$TOOLS_DIR/fdtoverlaymerge"
 fi
 
-if ! command -v mkbootimg >/dev/null 2>&1 && [ ! -x "$TOOLS_DIR/mkbootimg" ]; then
-    echo "Downloading mkbootimg..." | tee -a "$LOG_FILE"
+if [ ! -f "$TOOLS_DIR/mkbootimg" ] || grep -q "from gki.generate_gki_certificate" "$TOOLS_DIR/mkbootimg" 2>/dev/null; then
+    echo "Downloading and patching mkbootimg..." | tee -a "$LOG_FILE"
     curl -fsSL "https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-22.1/mkbootimg.py" -o "$TOOLS_DIR/mkbootimg" || true
+    sed -i 's/from gki.generate_gki_certificate import generate_gki_certificate/generate_gki_certificate = None/' "$TOOLS_DIR/mkbootimg" 2>/dev/null || true
     [ -s "$TOOLS_DIR/mkbootimg" ] && chmod +x "$TOOLS_DIR/mkbootimg"
+fi
+
+mkdir -p "$TOOLS_DIR/gki"
+touch "$TOOLS_DIR/gki/__init__.py"
+if [ ! -f "$TOOLS_DIR/gki/generate_gki_certificate.py" ]; then
+    curl -sL "https://android.googlesource.com/platform/system/tools/mkbootimg/+/refs/heads/main/gki/generate_gki_certificate.py?format=TEXT" | base64 -d > "$TOOLS_DIR/gki/generate_gki_certificate.py" 2>/dev/null || true
 fi
 
 if ! command -v mkdtboimg >/dev/null 2>&1 && [ ! -x "$TOOLS_DIR/mkdtboimg" ]; then
@@ -747,6 +754,9 @@ echo "FINAL_ZIP_NAME=$FINAL_ZIP_NAME" | tee -a "$LOG_FILE"
 
 echo "Generating standalone boot.img (Header v4)..." | tee -a "$LOG_FILE"
 rm -f "$ROOT_DIR/boot.img"
+if [ -f "$TOOLS_DIR/mkbootimg" ]; then
+    sed -i 's/from gki.generate_gki_certificate import generate_gki_certificate/generate_gki_certificate = None/' "$TOOLS_DIR/mkbootimg" 2>/dev/null || true
+fi
 if command -v mkbootimg >/dev/null 2>&1; then
     mkbootimg \
         --header_version 4 \
