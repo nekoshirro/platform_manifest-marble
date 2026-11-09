@@ -44,6 +44,49 @@ send_document() {
     [ -z "$TG_BOT_TOKEN" ] && return 0
     [ -z "$chat_id" ] && return 0
     [ ! -f "$file_path" ] && return 1
+
+    local file_size
+    file_size=$(stat -c%s "$file_path" 2>/dev/null || echo 0)
+    # Telegram Bot API standard upload limit is 50 MB (52428800 bytes).
+    # If file size is >= 49 MB, split into 45 MB chunks and upload each sequentially
+    if [ "$file_size" -ge 51380224 ]; then
+        echo "File $filename is $((file_size / 1024 / 1024)) MB (exceeds Telegram 50MB limit). Splitting into 45MB parts..." | tee -a "$LOG_FILE"
+        local split_prefix="${file_path}.part"
+        rm -f "${split_prefix}"*
+        split -b 45M -d "$file_path" "${split_prefix}"
+        local part_files=()
+        while IFS= read -r line; do
+            [ -n "$line" ] && part_files+=("$line")
+        done < <(ls "${split_prefix}"* 2>/dev/null | sort)
+        local total_parts=${#part_files[@]}
+        local part_idx=1
+        local all_ok=1
+
+        for part in "${part_files[@]}"; do
+            local part_name
+            part_name=$(basename "$part")
+            local part_caption="${caption}
+
+📦 <b>Part ${part_idx}/${total_parts}</b> (<code>${part_name}</code>)
+💡 <i>Join with:</i> <code>cat ${filename}.part* > ${filename}</code>"
+            echo "Uploading ${part_name} (${part_idx}/${total_parts}) to Telegram..." | tee -a "$LOG_FILE"
+            local part_resp
+            part_resp=$(curl -s --max-time 300 \
+                --form-string "chat_id=${chat_id}" \
+                --form-string "caption=${part_caption}" \
+                --form-string "parse_mode=HTML" \
+                -F "document=@${part};filename=${part_name};type=application/octet-stream" \
+                "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument")
+            if ! echo "$part_resp" | grep -q '"ok":true'; then
+                echo "WARNING: sendDocument failed for ${part_name}: ${part_resp:0:200}" | tee -a "$LOG_FILE"
+                all_ok=0
+            fi
+            part_idx=$((part_idx + 1))
+        done
+        rm -f "${split_prefix}"*
+        [ "$all_ok" -eq 1 ] && return 0 || return 1
+    fi
+
     resp=$(curl -s --max-time 300 \
         --form-string "chat_id=${chat_id}" \
         --form-string "caption=${caption}" \
@@ -489,6 +532,29 @@ echo "Compiling external Kernel Modules..." | tee -a "$LOG_FILE"
 find "$EXT_MODULES_ROOT" -name "Module.symvers" -delete 2>/dev/null || true
 RPATH=$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$EXT_MODULES_ROOT" "$KERNEL_SRC")
 
+# 1. Patch audio-kernel cs35l43 wm_adsp.h format specifiers
+if [ -f "$EXT_MODULES_ROOT/qcom/opensource/audio-kernel/asoc/codecs/cs35l43/wm_adsp.h" ]; then
+    echo "Patching cs35l43 wm_adsp.h pointer format specifiers..." | tee -a "$LOG_FILE"
+    sed -i 's/(0x%x, %x)/(0x%x, %p)/g' "$EXT_MODULES_ROOT/qcom/opensource/audio-kernel/asoc/codecs/cs35l43/wm_adsp.h"
+fi
+
+# 2. Setup WLAN symlinks for qcacld-3.0 (qca6490, common host, and fw-api)
+if [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0" ]; then
+    ln -sfn . "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/.qca6490"
+    [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/qca-wifi-host-cmn" ] && ln -sfn ../qca-wifi-host-cmn "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/cmn"
+    [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/fw-api" ] && ln -sfn ../fw-api "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/fw-api"
+fi
+
+# 3. Setup synx header paths for eva-kernel-v1
+mkdir -p "$KERNEL_SRC/drivers/media/platform/msm"
+if [ -d "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/msm/synx" ]; then
+    ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/msm/synx" "$KERNEL_SRC/drivers/media/platform/msm/synx"
+fi
+if [ -d "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" ]; then
+    mkdir -p "$KERNEL_SRC/include/media"
+    ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" "$KERNEL_SRC/include/media/synx"
+fi
+
 EXT_MODULES=(
     "qcom/opensource/mmrm-driver"
     "qcom/opensource/mm-drivers/sync_fence"
@@ -496,43 +562,48 @@ EXT_MODULES=(
     "qcom/opensource/securemsm-kernel"
     "qcom/opensource/spu-kernel"
     "qcom/opensource/synx-kernel"
-    "qcom/opensource/synx-kernel-v1"
-    "qcom/opensource/display-drivers/msm"
-    "qcom/opensource/audio-kernel"
-    "qcom/opensource/camera-kernel"
-    "qcom/opensource/video-driver"
     "qcom/opensource/graphics-kernel"
+    "qcom/opensource/video-driver"
+    "qcom/opensource/display-drivers/msm"
+    "qcom/opensource/camera-kernel"
+    "qcom/opensource/audio-kernel"
     "qcom/opensource/dsp-kernel"
     "qcom/opensource/eva-kernel-v1"
-    "qcom/opensource/wlan/platform"
-    "qcom/opensource/wlan/qcacld-3.0"
-    "qcom/opensource/bt-kernel"
+    "qcom/opensource/datarmnet-ext/mem"
     "qcom/opensource/dataipa/drivers/platform/msm"
     "qcom/opensource/datarmnet/core"
     "qcom/opensource/datarmnet-ext/aps"
-    "qcom/opensource/datarmnet-ext/mem"
     "qcom/opensource/datarmnet-ext/offload"
     "qcom/opensource/datarmnet-ext/perf"
     "qcom/opensource/datarmnet-ext/perf_tether"
     "qcom/opensource/datarmnet-ext/sch"
     "qcom/opensource/datarmnet-ext/shs"
     "qcom/opensource/datarmnet-ext/wlan"
-    "qcom/opensource/touch-drivers"
+    "qcom/opensource/wlan/platform"
+    "qcom/opensource/wlan/qcacld-3.0/.qca6490"
+    "qcom/opensource/bt-kernel"
     "nxp/opensource/driver"
 )
+
+EXTRA_MOD_CFLAGS="-Wno-error=format -Wno-error=misleading-indentation -Wno-error=unused-but-set-variable -Wno-error=unused-variable"
 
 for mod in "${EXT_MODULES[@]}"; do
     if [ -d "$EXT_MODULES_ROOT/$mod" ]; then
         echo "Building external module: $mod..." | tee -a "$LOG_FILE"
-        EXTRA_SYMS=$(find "$EXT_MODULES_ROOT" -name "Module.symvers" 2>/dev/null | tr '\n' ' ')
+        mod_extra_args=()
+        if [ "$mod" = "qcom/opensource/wlan/platform" ]; then
+            mod_extra_args+=("CONFIG_EXCLUDE_ICNSS=y")
+        fi
+
         kmake -C "$EXT_MODULES_ROOT/$mod" \
             M="$RPATH/$mod" \
             KERNEL_SRC="$KERNEL_SRC" \
             OUT_DIR="$KERNEL_SRC/out" \
             O="$KERNEL_SRC/out" \
             KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
-            KBUILD_EXTRA_SYMBOLS="$EXTRA_SYMS" \
-            KBUILD_EXTRA="KBUILD_EXTRA_SYMBOLS=\"$EXTRA_SYMS\"" \
+            EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
+            KCFLAGS="$EXTRA_MOD_CFLAGS" \
+            "${mod_extra_args[@]}" \
             2>&1 | tee -a "$LOG_FILE" || {
                 echo "Warning: compilation of $mod failed, continuing..." | tee -a "$LOG_FILE"
                 continue
@@ -546,8 +617,9 @@ for mod in "${EXT_MODULES[@]}"; do
             INSTALL_MOD_PATH="$MODULES_STAGING" \
             INSTALL_MOD_STRIP=1 \
             KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
-            KBUILD_EXTRA_SYMBOLS="$EXTRA_SYMS" \
-            KBUILD_EXTRA="KBUILD_EXTRA_SYMBOLS=\"$EXTRA_SYMS\"" \
+            EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
+            KCFLAGS="$EXTRA_MOD_CFLAGS" \
+            "${mod_extra_args[@]}" \
             modules_install 2>&1 | tee -a "$LOG_FILE" || {
                 echo "Warning: modules_install of $mod failed, continuing..." | tee -a "$LOG_FILE"
                 continue
@@ -656,8 +728,10 @@ cp -r "$VDLKM_DIR"/* "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/" 2>/dev/null || 
 mkdir -p "$ROOT_DIR/AnyKernel3/modules/vendor_boot"
 cp -r "$VBOOT_DIR"/* "$ROOT_DIR/AnyKernel3/modules/vendor_boot/" 2>/dev/null || true
 
-mkdir -p "$ROOT_DIR/AnyKernel3/modules/system/lib/modules"
-cp -r "$VDLKM_DIR"/*.ko "$ROOT_DIR/AnyKernel3/modules/system/lib/modules/" 2>/dev/null || true
+# Strip unneeded debug symbols from all packaged modules to optimize zip size
+echo "Stripping debug symbols from packaged kernel modules..." | tee -a "$LOG_FILE"
+find "$ROOT_DIR/AnyKernel3/modules" -type f -name "*.ko" -exec llvm-strip --strip-unneeded {} + 2>/dev/null || true
+rm -f "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/kheaders.ko" "$ROOT_DIR/AnyKernel3/modules/vendor_boot/kheaders.ko" 2>/dev/null || true
 
 [ -f "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" ] && sort -u "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" -o "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load"
 cp "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" "$ROOT_DIR/AnyKernel3/modules/modules.load" 2>/dev/null || true
@@ -665,8 +739,7 @@ cp "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" "$ROOT_DIR/AnyKernel3
 TOTAL_MODULES=$(find "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm" -type f -name "*.ko" | wc -l)
 echo "Total modules packaged: $TOTAL_MODULES" | tee -a "$LOG_FILE"
 
-# Adjust AnyKernel3 properties for Evolution-X KernelSU-Next
-sed -i 's/kernel.string=.*/kernel.string=Evo KernelSU-Next kernel/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
+# Adjust AnyKernel3 do.modules property (leaving kernel.string as repo default)
 if [ "$TOTAL_MODULES" -gt 0 ]; then
     sed -i 's/do.modules=0/do.modules=1/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
 else
