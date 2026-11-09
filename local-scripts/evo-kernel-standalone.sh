@@ -13,7 +13,7 @@ export DEVICE_CODE="marble"
 export DEVICE_DISPLAY="Redmi Note 12 Turbo"
 export DEVICE_NAME="Redmi Note 12 Turbo"
 export KERNEL_NAME="Evolution-X"
-export ROOT_VARIANT="Non-root"
+export ROOT_VARIANT="KernelSU-Next"
 export COMPILER_NAME="Google Clang AOSP (r596125)"
 export TZ="Asia/Jakarta"
 export ARCH="arm64"
@@ -336,6 +336,70 @@ ln -sfn "$EXT_MODULES_ROOT" "$KERNEL_SRC/out/marble-modules"
 
 cd "$KERNEL_SRC" || die "failed to enter $KERNEL_SRC"
 
+echo "Resetting modified tracked files in kernel source..." | tee -a "$LOG_FILE"
+git -C "$KERNEL_SRC" checkout -- arch/arm64/configs/gki_defconfig scripts/setlocalversion scripts/mkcompile_h drivers/Makefile drivers/Kconfig 2>/dev/null || true
+
+echo "Setting up KernelSU-Next from pershoot dev branch..." | tee -a "$LOG_FILE"
+curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/refs/heads/dev/kernel/setup.sh" | bash - 2>&1 | tee -a "$LOG_FILE"
+
+# Ensure symlink is properly created and valid
+if [ ! -L "$KERNEL_SRC/drivers/kernelsu" ]; then
+    echo "Creating drivers/kernelsu symlink..." | tee -a "$LOG_FILE"
+    ln -sfn "../KernelSU-Next/kernel" "$KERNEL_SRC/drivers/kernelsu"
+fi
+
+[ -L "$KERNEL_SRC/drivers/kernelsu" ] || die "KernelSU-Next symlink verification failed"
+
+# Ensure Makefile and Kconfig entries are present
+grep -q "kernelsu" "$KERNEL_SRC/drivers/Makefile" || printf "\nobj-\$(CONFIG_KSU) += kernelsu/\n" >> "$KERNEL_SRC/drivers/Makefile"
+grep -q "drivers/kernelsu/Kconfig" "$KERNEL_SRC/drivers/Kconfig" || sed -i '/endmenu/i\source "drivers/kernelsu/Kconfig"' "$KERNEL_SRC/drivers/Kconfig"
+
+if [ -f "$ROOT_DIR/manager.patch" ]; then
+    echo "Applying KernelSU-Next multi-manager patch..." | tee -a "$LOG_FILE"
+    git -C "$KERNEL_SRC/KernelSU-Next" checkout -- kernel/Kbuild 2>/dev/null || true
+    patch -d "$KERNEL_SRC/KernelSU-Next" -p1 < "$ROOT_DIR/manager.patch" 2>&1 | tee -a "$LOG_FILE" || true
+fi
+
+# Adapted 5 commits from branch evox-ksun:
+echo "Configuring vendor/extra.config (TMPFS, KernelSU, and LOCALVERSION)..." | tee -a "$LOG_FILE"
+mkdir -p "$KERNEL_SRC/arch/arm64/configs/vendor"
+cat << 'EOF' > "$KERNEL_SRC/arch/arm64/configs/vendor/extra.config"
+# Version
+CONFIG_LOCALVERSION="-[Evo]Shinomiya"
+# CONFIG_LOCALVERSION_AUTO is not set
+
+# TMPFS Support
+CONFIG_TMPFS_XATTR=y
+CONFIG_TMPFS_POSIX_ACL=y
+
+# KernelSU
+#
+CONFIG_KSU=y
+CONFIG_KPM=y
+CONFIG_KSU_MANUAL_HOOK=y
+CONFIG_KSU_TRACEPOINT_HOOK=n
+CONFIG_KSU_KPROBES_HOOK=n
+# CONFIG_KSU_DEBUG is not set
+# CONFIG_KSU_MULTI_MANAGER_SUPPORT is not set
+# CONFIG_KSU_ALLOWLIST_WORKAROUND is not set
+# CONFIG_KSU_CMDLINE is not set
+CONFIG_KSU_LSM_SECURITY_HOOKS=y
+# end of KernelSU
+EOF
+
+echo "Patching scripts/setlocalversion to never append '+'..." | tee -a "$LOG_FILE"
+sed -i 's/scm_version="\$(scm_version --short)"/scm_version=""/' "$KERNEL_SRC/scripts/setlocalversion"
+sed -i 's/res="\$res\${scm:++}"/res="\$res"/' "$KERNEL_SRC/scripts/setlocalversion" 2>/dev/null || true
+
+echo "Adapting defconfig for localversion..." | tee -a "$LOG_FILE"
+sed -i 's/CONFIG_LOCALVERSION="-4k"/# CONFIG_LOCALVERSION is not set/' "$KERNEL_SRC/arch/arm64/configs/gki_defconfig"
+
+echo "Patching scripts/mkcompile_h..." | tee -a "$LOG_FILE"
+export KBUILD_BUILD_USER="hafidz"
+export KBUILD_BUILD_HOST="devel-engine"
+sed -i 's/LINUX_COMPILE_BY=\$(whoami | sed .s\/\\\\\/\\\\\\\\\/\.)/LINUX_COMPILE_BY="hafidz"/' "$KERNEL_SRC/scripts/mkcompile_h" 2>/dev/null || true
+sed -i 's/LINUX_COMPILE_HOST=`uname -n`/LINUX_COMPILE_HOST="devel-engine"/' "$KERNEL_SRC/scripts/mkcompile_h" 2>/dev/null || true
+
 KERNEL_VERSION=$(awk '
 /^VERSION/ {v=$3}
 /^PATCHLEVEL/ {p=$3}
@@ -368,7 +432,7 @@ echo "Generating kernel configuration from BoardConfig.mk..." | tee -a "$LOG_FIL
 mkdir -p out
 
 # Kernel 6.6 defconfig fragments for marble
-CONFIG_LIST="gki_defconfig vendor/waipio_perf.config vendor/xiaomi_GKI.config vendor/marble_GKI.config"
+CONFIG_LIST="gki_defconfig vendor/waipio_perf.config vendor/xiaomi_GKI.config vendor/marble_GKI.config vendor/extra.config"
 
 MERGE_ARGS=""
 for cfg in $CONFIG_LIST; do
@@ -381,6 +445,7 @@ done
 
 ./scripts/kconfig/merge_config.sh -m -O out $MERGE_ARGS 2>&1 | tee -a "$LOG_FILE" || die "merge_config failed"
 ./scripts/config --file out/.config -d LOCALVERSION_AUTO
+./scripts/config --file out/.config --set-str LOCALVERSION "-[Evo]Shinomiya"
 
 make -j"$(nproc --all)" ARCH=arm64 O=out LLVM=1 LLVM_IAS=1 olddefconfig 2>&1 | tee -a "$LOG_FILE" || die "olddefconfig failed"
 
@@ -600,15 +665,17 @@ cp "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" "$ROOT_DIR/AnyKernel3
 TOTAL_MODULES=$(find "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm" -type f -name "*.ko" | wc -l)
 echo "Total modules packaged: $TOTAL_MODULES" | tee -a "$LOG_FILE"
 
-# Adjust AnyKernel3 properties for Evolution-X
-sed -i 's/kernel.string=.*/kernel.string=Evolution-X kernel/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
+# Adjust AnyKernel3 properties for Evolution-X KernelSU-Next
+sed -i 's/kernel.string=.*/kernel.string=Evo KernelSU-Next kernel/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
 if [ "$TOTAL_MODULES" -gt 0 ]; then
     sed -i 's/do.modules=0/do.modules=1/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
 else
     sed -i 's/do.modules=1/do.modules=0/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
 fi
 
-FINAL_ZIP_NAME="Evo-12.x-${KERNEL_VERSION}.zip"
+KSUN_VER=$(git -C "$KERNEL_SRC/KernelSU-Next" describe --tags --abbrev=0 2>/dev/null || true)
+[ -z "$KSUN_VER" ] && KSUN_VER=$(git -C "$KERNEL_SRC/KernelSU-Next" rev-parse --short HEAD 2>/dev/null || echo "v3.4.2")
+FINAL_ZIP_NAME="Evo-12.x-${KERNEL_VERSION}-KSU-Next-${KSUN_VER}.zip"
 rm -f "$ROOT_DIR/$FINAL_ZIP_NAME"
 
 echo "FINAL_ZIP_NAME=$FINAL_ZIP_NAME" | tee -a "$LOG_FILE"
