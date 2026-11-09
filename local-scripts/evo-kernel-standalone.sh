@@ -14,7 +14,7 @@ export DEVICE_DISPLAY="Redmi Note 12 Turbo"
 export DEVICE_NAME="Redmi Note 12 Turbo"
 export KERNEL_NAME="Evolution-X"
 export ROOT_VARIANT="Non-root"
-export COMPILER_NAME="Google Clang AOSP (r563880c)"
+export COMPILER_NAME="Google Clang AOSP (r596125)"
 export TZ="Asia/Jakarta"
 export ARCH="arm64"
 export SUBARCH="arm64"
@@ -192,23 +192,23 @@ sync_git_repo() {
     fi
 }
 
-CLANG_DIR="$ROOT_DIR/toolchain/clang-r563880c"
+CLANG_DIR="$ROOT_DIR/toolchain/clang-r596125"
 if [ ! -f "$CLANG_DIR/.clang_ok" ] || [ ! -x "$CLANG_DIR/bin/clang" ]; then
-    echo "Setting up Google Clang AOSP (r563880c)..." | tee -a "$LOG_FILE"
+    echo "Setting up Google Clang AOSP (r596125)..." | tee -a "$LOG_FILE"
     rm -rf "$CLANG_DIR"
     mkdir -p "$CLANG_DIR"
 
-    CLANG_TAR="$ROOT_DIR/toolchain/clang-r563880c.tar.gz"
+    CLANG_TAR="$ROOT_DIR/toolchain/clang-r596125.tar.gz"
     DOWNLOAD_SUCCESS=0
 
     # 1. Download from nekoshirro/aosp_clang-mirror private release using GH_TOKEN
     if [ -n "$GH_TOKEN" ]; then
-        echo "Querying GitHub API for private Clang release asset (nekoshirro/aosp_clang-mirror:clang-21)..." | tee -a "$LOG_FILE"
+        echo "Querying GitHub API for private Clang release asset (nekoshirro/aosp_clang-mirror:clang-22)..." | tee -a "$LOG_FILE"
         ASSET_API_URL=$(python3 -c "
 import sys, json, urllib.request
 token = sys.argv[1]
 req = urllib.request.Request(
-    'https://api.github.com/repos/nekoshirro/aosp_clang-mirror/releases/tags/clang-21',
+    'https://api.github.com/repos/nekoshirro/aosp_clang-mirror/releases/tags/clang-22',
     headers={
         'Authorization': f'Bearer {token}',
         'Accept': 'application/vnd.github+json',
@@ -219,7 +219,7 @@ try:
     with urllib.request.urlopen(req, timeout=20) as resp:
         data = json.load(resp)
         for a in data.get('assets', []):
-            if a.get('name') == 'clang-r563880c.tar.gz':
+            if a.get('name') == 'clang-r596125.tar.gz':
                 print(a.get('url'))
                 break
 except Exception as e:
@@ -242,7 +242,7 @@ except Exception as e:
             if curl -fSL --max-time 600 \
                 -H "Authorization: token $GH_TOKEN" \
                 -o "$CLANG_TAR" \
-                "https://github.com/nekoshirro/aosp_clang-mirror/releases/download/clang-21/clang-r563880c.tar.gz" && [ -s "$CLANG_TAR" ]; then
+                "https://github.com/nekoshirro/aosp_clang-mirror/releases/download/clang-22/clang-r596125.tar.gz" && [ -s "$CLANG_TAR" ]; then
                 if ! head -c 100 "$CLANG_TAR" | grep -qE "^{|\<html"; then
                     DOWNLOAD_SUCCESS=1
                 else
@@ -257,7 +257,7 @@ except Exception as e:
     # 2. Fallback to public AOSP Gitiles archive if needed
     if [ "$DOWNLOAD_SUCCESS" -ne 1 ]; then
         echo "Private release download unavailable, trying AOSP Gitiles..." | tee -a "$LOG_FILE"
-        CLANG_TAR_URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/tags/android-16.0.0_r4/clang-r563880c.tar.gz"
+        CLANG_TAR_URL="https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r596125.tar.gz"
         if curl -fSL --retry 3 --connect-timeout 30 "$CLANG_TAR_URL" -o "$CLANG_TAR" 2>&1 | tee -a "$LOG_FILE" && [ -s "$CLANG_TAR" ]; then
             DOWNLOAD_SUCCESS=1
         fi
@@ -267,18 +267,23 @@ except Exception as e:
     if [ "$DOWNLOAD_SUCCESS" -eq 1 ] && tar -xzf "$CLANG_TAR" -C "$CLANG_DIR" 2>&1 | tee -a "$LOG_FILE" && [ -x "$CLANG_DIR/bin/clang" ]; then
         rm -f "$CLANG_TAR"
         touch "$CLANG_DIR/.clang_ok"
-        echo "Clang r563880c extracted successfully." | tee -a "$LOG_FILE"
+        echo "Clang r596125 extracted successfully." | tee -a "$LOG_FILE"
     else
-        # 3. Final Fallback: Git clone from bluegreensea mirror
-        echo "Tarball extraction failed, falling back to Git clone from bluegreensea mirror..." | tee -a "$LOG_FILE"
+        # 3. Final Fallback: Direct download from release url if token was not required or mirrored
+        echo "Tarball extraction failed, attempting direct curl download..." | tee -a "$LOG_FILE"
         rm -rf "$CLANG_DIR" "$CLANG_TAR"
         mkdir -p "$CLANG_DIR"
-        git clone https://github.com/bluegreensea/android_prebuilts_clang_kernel_linux-x86_clang-r563880c.git -b main "$CLANG_DIR" --depth 1 2>&1 | tee -a "$LOG_FILE" || die "clone clang-r563880c failed"
-        (git -C "$CLANG_DIR" lfs install && git -C "$CLANG_DIR" lfs pull) 2>&1 | tee -a "$LOG_FILE" || die "LFS pull clang-r563880c failed"
-        touch "$CLANG_DIR/.clang_ok"
+        curl -fSL --retry 3 --connect-timeout 30 "https://github.com/nekoshirro/aosp_clang-mirror/releases/download/clang-22/clang-r596125.tar.gz" -o "$CLANG_TAR" 2>&1 | tee -a "$LOG_FILE" || true
+        if [ -s "$CLANG_TAR" ] && tar -xzf "$CLANG_TAR" -C "$CLANG_DIR" 2>&1 | tee -a "$LOG_FILE" && [ -x "$CLANG_DIR/bin/clang" ]; then
+            rm -f "$CLANG_TAR"
+            touch "$CLANG_DIR/.clang_ok"
+            echo "Clang r596125 extracted successfully." | tee -a "$LOG_FILE"
+        else
+            die "Failed to setup Clang r596125"
+        fi
     fi
 else
-    echo "Using existing Clang r563880c toolchain in $CLANG_DIR..." | tee -a "$LOG_FILE"
+    echo "Using existing Clang r596125 toolchain in $CLANG_DIR..." | tee -a "$LOG_FILE"
 fi
 
 export PATH="$CLANG_DIR/bin:$PATH"
