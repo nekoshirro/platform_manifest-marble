@@ -45,48 +45,6 @@ send_document() {
     [ -z "$chat_id" ] && return 0
     [ ! -f "$file_path" ] && return 1
 
-    local file_size
-    file_size=$(stat -c%s "$file_path" 2>/dev/null || echo 0)
-    # Telegram Bot API standard upload limit is 50 MB (52428800 bytes).
-    # If file size is >= 49 MB, split into 45 MB chunks and upload each sequentially
-    if [ "$file_size" -ge 51380224 ]; then
-        echo "File $filename is $((file_size / 1024 / 1024)) MB (exceeds Telegram 50MB limit). Splitting into 45MB parts..." | tee -a "$LOG_FILE"
-        local split_prefix="${file_path}.part"
-        rm -f "${split_prefix}"*
-        split -b 45M -d "$file_path" "${split_prefix}"
-        local part_files=()
-        while IFS= read -r line; do
-            [ -n "$line" ] && part_files+=("$line")
-        done < <(ls "${split_prefix}"* 2>/dev/null | sort)
-        local total_parts=${#part_files[@]}
-        local part_idx=1
-        local all_ok=1
-
-        for part in "${part_files[@]}"; do
-            local part_name
-            part_name=$(basename "$part")
-            local part_caption="${caption}
-
-📦 <b>Part ${part_idx}/${total_parts}</b> (<code>${part_name}</code>)
-💡 <i>Join with:</i> <code>cat ${filename}.part* > ${filename}</code>"
-            echo "Uploading ${part_name} (${part_idx}/${total_parts}) to Telegram..." | tee -a "$LOG_FILE"
-            local part_resp
-            part_resp=$(curl -s --max-time 300 \
-                --form-string "chat_id=${chat_id}" \
-                --form-string "caption=${part_caption}" \
-                --form-string "parse_mode=HTML" \
-                -F "document=@${part};filename=${part_name};type=application/octet-stream" \
-                "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument")
-            if ! echo "$part_resp" | grep -q '"ok":true'; then
-                echo "WARNING: sendDocument failed for ${part_name}: ${part_resp:0:200}" | tee -a "$LOG_FILE"
-                all_ok=0
-            fi
-            part_idx=$((part_idx + 1))
-        done
-        rm -f "${split_prefix}"*
-        [ "$all_ok" -eq 1 ] && return 0 || return 1
-    fi
-
     resp=$(curl -s --max-time 300 \
         --form-string "chat_id=${chat_id}" \
         --form-string "caption=${caption}" \
@@ -185,6 +143,18 @@ if [ ! -f "$TOOLS_DIR/fdtoverlaymerge" ] || [ ! -x "$TOOLS_DIR/fdtoverlaymerge" 
     echo "Downloading fdtoverlaymerge..." | tee -a "$LOG_FILE"
     curl -fsSL "https://raw.githubusercontent.com/papel-palyground/android_kernel_prebuilts_build-tools/lineage-23.2/linux-x86/bin/fdtoverlaymerge" -o "$TOOLS_DIR/fdtoverlaymerge" || true
     [ -f "$TOOLS_DIR/fdtoverlaymerge" ] && chmod +x "$TOOLS_DIR/fdtoverlaymerge"
+fi
+
+if ! command -v mkbootimg >/dev/null 2>&1 && [ ! -x "$TOOLS_DIR/mkbootimg" ]; then
+    echo "Downloading mkbootimg..." | tee -a "$LOG_FILE"
+    curl -fsSL "https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-22.1/mkbootimg.py" -o "$TOOLS_DIR/mkbootimg" || true
+    [ -s "$TOOLS_DIR/mkbootimg" ] && chmod +x "$TOOLS_DIR/mkbootimg"
+fi
+
+if ! command -v mkdtboimg >/dev/null 2>&1 && [ ! -x "$TOOLS_DIR/mkdtboimg" ]; then
+    echo "Downloading mkdtboimg..." | tee -a "$LOG_FILE"
+    curl -sL "https://android.googlesource.com/platform/system/libufdt/+/refs/heads/main/utils/src/mkdtboimg.py?format=TEXT" | base64 -d > "$TOOLS_DIR/mkdtboimg" 2>/dev/null || true
+    [ -s "$TOOLS_DIR/mkdtboimg" ] && chmod +x "$TOOLS_DIR/mkdtboimg"
 fi
 
 export PATH="$TOOLS_DIR:$PATH"
@@ -516,8 +486,8 @@ BUILD_STATUS=${PIPESTATUS[0]}
 BOOT_IMG_PATH="$KERNEL_SRC/out/arch/arm64/boot/Image"
 [ -f "$BOOT_IMG_PATH" ] || die "Kernel Image not found at $BOOT_IMG_PATH"
 
-# echo "Compiling Device Tree Blobs (DTBs)..." | tee -a "$LOG_FILE"
-# kmake dtbs 2>&1 | tee -a "$LOG_FILE" || die "DTB compilation failed"
+echo "Compiling Device Tree Blobs (DTBs)..." | tee -a "$LOG_FILE"
+kmake dtbs 2>&1 | tee -a "$LOG_FILE" || die "DTB compilation failed"
 # 
 # echo "Compiling in-tree Kernel Modules..." | tee -a "$LOG_FILE"
 # MODULES_STAGING="$KERNEL_SRC/out/modules_staging"
@@ -705,38 +675,38 @@ git clone https://gitlab.com/nekoshirro/AnyKernel3.git -b marble-evox "$ROOT_DIR
 cp "$BOOT_IMG_PATH" "$ROOT_DIR/AnyKernel3/Image" || die "copy Image failed"
 cp "$BOOT_IMG_PATH" "$ROOT_DIR/AnyKernel3/kernel" || die "copy kernel failed"
 
-# # Packaging DTB for AnyKernel3
-# echo "Packaging DTB for AnyKernel3..." | tee -a "$LOG_FILE"
-# DTBS_BASE="$KERNEL_SRC/out/dtbs_base"
-# DTBS_OUT="$KERNEL_SRC/out/dtbs_out"
-# rm -rf "$DTBS_BASE" "$DTBS_OUT"
-# mkdir -p "$DTBS_BASE" "$DTBS_OUT"
-# 
-# cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*ukee*.dtb "$DTBS_BASE/" 2>/dev/null || true
-# cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*waipio*.dtb "$DTBS_BASE/" 2>/dev/null || true
-# 
-# if [ -f "$TOOLS_DIR/merge_dtbs.py" ]; then
-#     PATH="$TOOLS_DIR:$PATH" python3 "$TOOLS_DIR/merge_dtbs.py" \
-#         --base "$DTBS_BASE" \
-#         --techpack "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" \
-#         --out "$DTBS_OUT" 2>&1 | tee -a "$LOG_FILE" || true
-# fi
-# 
-# MERGED_MARBLE_DTB=$(find "$DTBS_OUT" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
-# if [ -z "$MERGED_MARBLE_DTB" ]; then
-#     MERGED_MARBLE_DTB=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
-# fi
-# 
-# if [ -n "$MERGED_MARBLE_DTB" ] && [ -f "$MERGED_MARBLE_DTB" ]; then
-#     echo "Using marble DTB: $MERGED_MARBLE_DTB" | tee -a "$LOG_FILE"
-#     cp "$MERGED_MARBLE_DTB" "$ROOT_DIR/AnyKernel3/dtb"
-# else
-#     echo "Concatenating available UKEE/WAIPIO DTBs for AnyKernel3/dtb..." | tee -a "$LOG_FILE"
-#     ALL_DTBS=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f \( -name "*ukee*.dtb" -o -name "*waipio*.dtb" \) 2>/dev/null | sort -u)
-#     if [ -n "$ALL_DTBS" ]; then
-#         cat $ALL_DTBS > "$ROOT_DIR/AnyKernel3/dtb"
-#     fi
-# fi
+# Packaging DTB for AnyKernel3
+echo "Packaging DTB for AnyKernel3..." | tee -a "$LOG_FILE"
+DTBS_BASE="$KERNEL_SRC/out/dtbs_base"
+DTBS_OUT="$KERNEL_SRC/out/dtbs_out"
+rm -rf "$DTBS_BASE" "$DTBS_OUT"
+mkdir -p "$DTBS_BASE" "$DTBS_OUT"
+
+cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*ukee*.dtb "$DTBS_BASE/" 2>/dev/null || true
+cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*waipio*.dtb "$DTBS_BASE/" 2>/dev/null || true
+
+if [ -f "$TOOLS_DIR/merge_dtbs.py" ]; then
+    PATH="$TOOLS_DIR:$PATH" python3 "$TOOLS_DIR/merge_dtbs.py" \
+        --base "$DTBS_BASE" \
+        --techpack "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" \
+        --out "$DTBS_OUT" 2>&1 | tee -a "$LOG_FILE" || true
+fi
+
+MERGED_MARBLE_DTB=$(find "$DTBS_OUT" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
+if [ -z "$MERGED_MARBLE_DTB" ]; then
+    MERGED_MARBLE_DTB=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
+fi
+
+if [ -n "$MERGED_MARBLE_DTB" ] && [ -f "$MERGED_MARBLE_DTB" ]; then
+    echo "Using marble DTB: $MERGED_MARBLE_DTB" | tee -a "$LOG_FILE"
+    cp "$MERGED_MARBLE_DTB" "$ROOT_DIR/AnyKernel3/dtb"
+else
+    echo "Concatenating available UKEE/WAIPIO DTBs for AnyKernel3/dtb..." | tee -a "$LOG_FILE"
+    ALL_DTBS=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f \( -name "*ukee*.dtb" -o -name "*waipio*.dtb" \) 2>/dev/null | sort -u)
+    if [ -n "$ALL_DTBS" ]; then
+        cat $ALL_DTBS > "$ROOT_DIR/AnyKernel3/dtb"
+    fi
+fi
 # 
 # # Copying compiled modules to AnyKernel3
 # echo "Copying compiled kernel modules to AnyKernel3..." | tee -a "$LOG_FILE"
@@ -774,6 +744,36 @@ rm -f "$ROOT_DIR/$FINAL_ZIP_NAME"
 
 echo "FINAL_ZIP_NAME=$FINAL_ZIP_NAME" | tee -a "$LOG_FILE"
 (cd "$ROOT_DIR/AnyKernel3" && zip -r9 "$ROOT_DIR/$FINAL_ZIP_NAME" * -x .git README.md) 2>&1 | tee -a "$LOG_FILE" || die "AnyKernel3 zip creation failed"
+
+echo "Generating standalone boot.img (Header v4)..." | tee -a "$LOG_FILE"
+rm -f "$ROOT_DIR/boot.img"
+if command -v mkbootimg >/dev/null 2>&1; then
+    mkbootimg \
+        --header_version 4 \
+        --kernel "$BOOT_IMG_PATH" \
+        --output "$ROOT_DIR/boot.img" \
+        --os_version "15.0.0" \
+        --os_patch_level "2026-11" \
+        2>&1 | tee -a "$LOG_FILE" || echo "WARNING: boot.img generation failed" | tee -a "$LOG_FILE"
+    [ -f "$ROOT_DIR/boot.img" ] && echo "boot.img generated: $ROOT_DIR/boot.img ($(stat -c%s "$ROOT_DIR/boot.img" 2>/dev/null | numfmt --to=iec 2>/dev/null || echo ""))" | tee -a "$LOG_FILE"
+else
+    echo "WARNING: mkbootimg not found, skipping boot.img generation" | tee -a "$LOG_FILE"
+fi
+
+echo "Generating standalone dtbo.img..." | tee -a "$LOG_FILE"
+rm -f "$ROOT_DIR/dtbo.img"
+if command -v mkdtboimg >/dev/null 2>&1; then
+    DTBO_FILES=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f -name "*marble*.dtbo" 2>/dev/null | sort)
+    [ -z "$DTBO_FILES" ] && DTBO_FILES=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f -name "*.dtbo" 2>/dev/null | sort)
+    if [ -n "$DTBO_FILES" ]; then
+        mkdtboimg create "$ROOT_DIR/dtbo.img" --page_size=4096 $DTBO_FILES 2>&1 | tee -a "$LOG_FILE" || echo "WARNING: mkdtboimg failed" | tee -a "$LOG_FILE"
+        [ -f "$ROOT_DIR/dtbo.img" ] && echo "dtbo.img generated: $ROOT_DIR/dtbo.img ($(stat -c%s "$ROOT_DIR/dtbo.img" 2>/dev/null | numfmt --to=iec 2>/dev/null || echo ""))" | tee -a "$LOG_FILE"
+    else
+        echo "WARNING: No .dtbo files found, skipping dtbo.img generation" | tee -a "$LOG_FILE"
+    fi
+else
+    echo "WARNING: mkdtboimg not found, skipping dtbo.img generation" | tee -a "$LOG_FILE"
+fi
 
 DURATION=$(( $(date +%s) - BUILD_START_TIME ))
 MD5_CHECK=$(md5sum "$ROOT_DIR/$FINAL_ZIP_NAME" | cut -d' ' -f1)
