@@ -449,7 +449,6 @@ KERNEL_VERSION=$(awk '
 /^SUBLEVEL/ {s=$3}
 END {print v "." p "." s}
 ' Makefile)
-export KERNEL_VERSION
 echo "KERNEL_VERSION=$KERNEL_VERSION" | tee -a "$LOG_FILE"
 
 DOCKEROS=$(grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d '"' -f2)
@@ -543,6 +542,10 @@ BOOT_IMG_PATH="$KERNEL_SRC/out/arch/arm64/boot/Image"
 #     ln -sfn . "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/.qca6490"
 #     [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/qca-wifi-host-cmn" ] && ln -sfn ../qca-wifi-host-cmn "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/cmn"
 #     [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/fw-api" ] && ln -sfn ../fw-api "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/fw-api"
+#     # Ensure multibus.h is reachable from hif/src
+#     if [ -f "$EXT_MODULES_ROOT/qcom/opensource/wlan/qca-wifi-host-cmn/hif/src/dispatcher/multibus.h" ]; then
+#         ln -sfn dispatcher/multibus.h "$EXT_MODULES_ROOT/qcom/opensource/wlan/qca-wifi-host-cmn/hif/src/multibus.h"
+#     fi
 # fi
 # 
 # # 3. Setup synx header paths for eva-kernel-v1
@@ -553,6 +556,8 @@ BOOT_IMG_PATH="$KERNEL_SRC/out/arch/arm64/boot/Image"
 # if [ -d "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" ]; then
 #     mkdir -p "$KERNEL_SRC/include/media"
 #     ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" "$KERNEL_SRC/include/media/synx"
+#     ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media/synx_header.h" "$KERNEL_SRC/drivers/media/platform/msm/synx/synx_header.h"
+#     ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media/synx_header.h" "$KERNEL_SRC/include/synx_header.h"
 # fi
 # 
 # EXT_MODULES=(
@@ -594,6 +599,21 @@ BOOT_IMG_PATH="$KERNEL_SRC/out/arch/arm64/boot/Image"
 #         if [ "$mod" = "qcom/opensource/wlan/platform" ]; then
 #             mod_extra_args+=("CONFIG_EXCLUDE_ICNSS=y")
 #         fi
+#         if [ "$mod" = "qcom/opensource/audio-kernel" ]; then
+#             mod_extra_args+=(
+#                 "AUDIO_ROOT=$EXT_MODULES_ROOT/qcom/opensource/audio-kernel"
+#                 "MODNAME=audio_dlkm"
+#             )
+#         fi
+#         if [ "$mod" = "qcom/opensource/wlan/qcacld-3.0/.qca6490" ]; then
+#             mod_extra_args+=(
+#                 "CONFIG_CNSS2_MODULE=y"
+#                 "CONFIG_ROME_IF=pci"
+#                 "CONFIG_HIF_PCI=y"
+#                 "WLAN_ROOT=$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0"
+#                 "WLAN_COMMON_INC=$EXT_MODULES_ROOT/qcom/opensource/wlan/qca-wifi-host-cmn"
+#             )
+#         fi
 # 
 #         kmake -C "$EXT_MODULES_ROOT/$mod" \
 #             M="$RPATH/$mod" \
@@ -601,7 +621,6 @@ BOOT_IMG_PATH="$KERNEL_SRC/out/arch/arm64/boot/Image"
 #             OUT_DIR="$KERNEL_SRC/out" \
 #             O="$KERNEL_SRC/out" \
 #             KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
-#             EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
 #             KCFLAGS="$EXTRA_MOD_CFLAGS" \
 #             "${mod_extra_args[@]}" \
 #             2>&1 | tee -a "$LOG_FILE" || {
@@ -617,7 +636,6 @@ BOOT_IMG_PATH="$KERNEL_SRC/out/arch/arm64/boot/Image"
 #             INSTALL_MOD_PATH="$MODULES_STAGING" \
 #             INSTALL_MOD_STRIP=1 \
 #             KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
-#             EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
 #             KCFLAGS="$EXTRA_MOD_CFLAGS" \
 #             "${mod_extra_args[@]}" \
 #             modules_install 2>&1 | tee -a "$LOG_FILE" || {
