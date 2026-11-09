@@ -10,7 +10,7 @@ These scripts are designed to run directly on an Ubuntu/Debian x86_64 system or 
 - non-root-standalone.sh: Builds the vanilla non-root kernel variant (branch 17).
 - resukisu-standalone.sh: Builds the ReSukiSU root variant (branch resukisu-staging).
 - kernelsu-next-standalone.sh: Builds the KernelSU-Next root variant (branch ksu-next-staging).
-- evo-kernel-standalone.sh: Builds the Evolution-X kernel variant with KernelSU-Next multi-manager support.
+- evo-kernel-standalone.sh: Builds the Evolution-X kernel variant.
 
 Note: Running `./all-standalone.sh` without arguments (or with `all`) builds the three standard variants: non-root, resukisu, and kernelsu-next. SukiSU is deprecated and removed. The evo-kernel variant is built separately when explicitly specified.
 

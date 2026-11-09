@@ -1,0 +1,15 @@
+# Secrets and credentials
+.secrets
+*.secrets
+secrets.env
+
+# Build outputs and tools
+toolchain/
+tools/
+out/
+AnyKernel3/
+log.txt
+*.zip
+*.tar.gz
+*.swap
+/swapfile
