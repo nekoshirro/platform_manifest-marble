@@ -517,168 +517,168 @@ BUILD_STATUS=${PIPESTATUS[0]}
 BOOT_IMG_PATH="$KERNEL_SRC/out/arch/arm64/boot/Image"
 [ -f "$BOOT_IMG_PATH" ] || die "Kernel Image not found at $BOOT_IMG_PATH"
 
-echo "Compiling Device Tree Blobs (DTBs)..." | tee -a "$LOG_FILE"
-kmake dtbs 2>&1 | tee -a "$LOG_FILE" || die "DTB compilation failed"
-
-echo "Compiling in-tree Kernel Modules..." | tee -a "$LOG_FILE"
-MODULES_STAGING="$KERNEL_SRC/out/modules_staging"
-rm -rf "$MODULES_STAGING"
-mkdir -p "$MODULES_STAGING"
-
-kmake modules 2>&1 | tee -a "$LOG_FILE" || die "in-tree modules compilation failed"
-kmake INSTALL_MOD_PATH="$MODULES_STAGING" INSTALL_MOD_STRIP=1 modules_install 2>&1 | tee -a "$LOG_FILE" || die "in-tree modules install failed"
-
-echo "Compiling external Kernel Modules..." | tee -a "$LOG_FILE"
-find "$EXT_MODULES_ROOT" -name "Module.symvers" -delete 2>/dev/null || true
-RPATH=$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$EXT_MODULES_ROOT" "$KERNEL_SRC")
-
-# 1. Patch audio-kernel cs35l43 wm_adsp.h format specifiers
-if [ -f "$EXT_MODULES_ROOT/qcom/opensource/audio-kernel/asoc/codecs/cs35l43/wm_adsp.h" ]; then
-    echo "Patching cs35l43 wm_adsp.h pointer format specifiers..." | tee -a "$LOG_FILE"
-    sed -i 's/(0x%x, %x)/(0x%x, %p)/g' "$EXT_MODULES_ROOT/qcom/opensource/audio-kernel/asoc/codecs/cs35l43/wm_adsp.h"
-fi
-
-# 2. Setup WLAN symlinks for qcacld-3.0 (qca6490, common host, and fw-api)
-if [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0" ]; then
-    ln -sfn . "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/.qca6490"
-    [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/qca-wifi-host-cmn" ] && ln -sfn ../qca-wifi-host-cmn "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/cmn"
-    [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/fw-api" ] && ln -sfn ../fw-api "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/fw-api"
-fi
-
-# 3. Setup synx header paths for eva-kernel-v1
-mkdir -p "$KERNEL_SRC/drivers/media/platform/msm"
-if [ -d "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/msm/synx" ]; then
-    ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/msm/synx" "$KERNEL_SRC/drivers/media/platform/msm/synx"
-fi
-if [ -d "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" ]; then
-    mkdir -p "$KERNEL_SRC/include/media"
-    ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" "$KERNEL_SRC/include/media/synx"
-fi
-
-EXT_MODULES=(
-    "qcom/opensource/mmrm-driver"
-    "qcom/opensource/mm-drivers/sync_fence"
-    "qcom/opensource/mm-drivers/msm_ext_display"
-    "qcom/opensource/securemsm-kernel"
-    "qcom/opensource/spu-kernel"
-    "qcom/opensource/synx-kernel"
-    "qcom/opensource/graphics-kernel"
-    "qcom/opensource/video-driver"
-    "qcom/opensource/display-drivers/msm"
-    "qcom/opensource/camera-kernel"
-    "qcom/opensource/audio-kernel"
-    "qcom/opensource/dsp-kernel"
-    "qcom/opensource/eva-kernel-v1"
-    "qcom/opensource/datarmnet-ext/mem"
-    "qcom/opensource/dataipa/drivers/platform/msm"
-    "qcom/opensource/datarmnet/core"
-    "qcom/opensource/datarmnet-ext/aps"
-    "qcom/opensource/datarmnet-ext/offload"
-    "qcom/opensource/datarmnet-ext/perf"
-    "qcom/opensource/datarmnet-ext/perf_tether"
-    "qcom/opensource/datarmnet-ext/sch"
-    "qcom/opensource/datarmnet-ext/shs"
-    "qcom/opensource/datarmnet-ext/wlan"
-    "qcom/opensource/wlan/platform"
-    "qcom/opensource/wlan/qcacld-3.0/.qca6490"
-    "qcom/opensource/bt-kernel"
-    "nxp/opensource/driver"
-)
-
-EXTRA_MOD_CFLAGS="-Wno-error=format -Wno-error=misleading-indentation -Wno-error=unused-but-set-variable -Wno-error=unused-variable"
-
-for mod in "${EXT_MODULES[@]}"; do
-    if [ -d "$EXT_MODULES_ROOT/$mod" ]; then
-        echo "Building external module: $mod..." | tee -a "$LOG_FILE"
-        mod_extra_args=()
-        if [ "$mod" = "qcom/opensource/wlan/platform" ]; then
-            mod_extra_args+=("CONFIG_EXCLUDE_ICNSS=y")
-        fi
-
-        kmake -C "$EXT_MODULES_ROOT/$mod" \
-            M="$RPATH/$mod" \
-            KERNEL_SRC="$KERNEL_SRC" \
-            OUT_DIR="$KERNEL_SRC/out" \
-            O="$KERNEL_SRC/out" \
-            KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
-            EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
-            KCFLAGS="$EXTRA_MOD_CFLAGS" \
-            "${mod_extra_args[@]}" \
-            2>&1 | tee -a "$LOG_FILE" || {
-                echo "Warning: compilation of $mod failed, continuing..." | tee -a "$LOG_FILE"
-                continue
-            }
-
-        kmake -C "$EXT_MODULES_ROOT/$mod" \
-            M="$RPATH/$mod" \
-            KERNEL_SRC="$KERNEL_SRC" \
-            OUT_DIR="$KERNEL_SRC/out" \
-            O="$KERNEL_SRC/out" \
-            INSTALL_MOD_PATH="$MODULES_STAGING" \
-            INSTALL_MOD_STRIP=1 \
-            KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
-            EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
-            KCFLAGS="$EXTRA_MOD_CFLAGS" \
-            "${mod_extra_args[@]}" \
-            modules_install 2>&1 | tee -a "$LOG_FILE" || {
-                echo "Warning: modules_install of $mod failed, continuing..." | tee -a "$LOG_FILE"
-                continue
-            }
-    fi
-done
-
-echo "Processing module stages and depmod..." | tee -a "$LOG_FILE"
-KERNEL_RELEASE_VER=$(cat "$KERNEL_SRC/out/include/config/kernel.release" 2>/dev/null || echo "$KERNEL_VERSION")
-depmod -b "$MODULES_STAGING" -F "$KERNEL_SRC/out/System.map" "$KERNEL_RELEASE_VER" 2>&1 | tee -a "$LOG_FILE" || true
-
-MODULES_OUT=$(find "$MODULES_STAGING/lib/modules" -mindepth 1 -maxdepth 1 -type d | head -n1)
-[ -z "$MODULES_OUT" ] && MODULES_OUT="$MODULES_STAGING/lib/modules/$KERNEL_RELEASE_VER"
-
-VBOOT_DIR="$KERNEL_SRC/out/vendor_ramdisk"
-VDLKM_DIR="$KERNEL_SRC/out/vendor_dlkm"
-rm -rf "$VBOOT_DIR" "$VDLKM_DIR"
-mkdir -p "$VBOOT_DIR" "$VDLKM_DIR"
-
-FIRST_STAGE_MODULES=$(cat "$COMMON_DEVICE_DIR/modules.load.vendor_boot" 2>/dev/null || cat "$KERNEL_SRC/modules.list.msm.waipio" 2>/dev/null || echo "")
-for mod in $FIRST_STAGE_MODULES; do
-    mod_path=$(find "$MODULES_OUT" -name "$mod" -print -quit 2>/dev/null)
-    [ -n "$mod_path" ] || continue
-    cp "$mod_path" "$VBOOT_DIR/"
-    echo "$mod" >> "$VBOOT_DIR/modules.load"
-    echo "$mod" >> "$VBOOT_DIR/modules.load.recovery"
-done
-
-SECOND_STAGE_MODULES=$(cat "$COMMON_DEVICE_DIR/modules.load.recovery" 2>/dev/null || cat "$DEVICE_DIR/modules.list.second_stage" 2>/dev/null || echo "")
-for mod in $SECOND_STAGE_MODULES; do
-    mod_path=$(find "$MODULES_OUT" -name "$mod" -print -quit 2>/dev/null)
-    [ -n "$mod_path" ] || continue
-    cp "$mod_path" "$VBOOT_DIR/"
-    cp "$mod_path" "$VDLKM_DIR/"
-    echo "$mod" >> "$VBOOT_DIR/modules.load.recovery"
-    echo "$mod" >> "$VDLKM_DIR/modules.load"
-done
-
-VENDOR_DLKM_MODULES=$(cat "$COMMON_DEVICE_DIR/modules.load" 2>/dev/null || cat "$DEVICE_DIR/modules.list.vendor_dlkm" 2>/dev/null || echo "")
-for mod in $VENDOR_DLKM_MODULES; do
-    mod_path=$(find "$MODULES_OUT" -name "$mod" -print -quit 2>/dev/null)
-    [ -n "$mod_path" ] || continue
-    cp "$mod_path" "$VDLKM_DIR/"
-    echo "$mod" >> "$VDLKM_DIR/modules.load"
-done
-
-# Copy any remaining compiled modules to vendor_dlkm so no driver is missing
-find "$MODULES_OUT" -type f -name "*.ko" -exec cp -n {} "$VDLKM_DIR/" \; 2>/dev/null || true
-
-# Blocklists
-[ -f "$COMMON_DEVICE_DIR/modules.blocklist" ] && cp "$COMMON_DEVICE_DIR/modules.blocklist" "$VDLKM_DIR/modules.blocklist"
-[ -f "$COMMON_DEVICE_DIR/modules.blocklist.vendor_boot" ] && cp "$COMMON_DEVICE_DIR/modules.blocklist.vendor_boot" "$VBOOT_DIR/modules.blocklist"
-
-# Copy module metadata
-cp "$MODULES_OUT"/modules.{alias,dep,softdep} "$VDLKM_DIR/" 2>/dev/null || true
-cp "$MODULES_OUT"/modules.{alias,dep,softdep} "$VBOOT_DIR/" 2>/dev/null || true
-
-[ -f "$VDLKM_DIR/modules.dep" ] && sed -E -i 's|([^: ]*/)([^/]*\.ko)([:]?)([ ]|$)|/vendor_dlkm/lib/modules/\2\3\4|g' "$VDLKM_DIR/modules.dep"
-[ -f "$VBOOT_DIR/modules.dep" ] && sed -E -i 's|([^: ]*/)([^/]*\.ko)([:]?)([ ]|$)|/lib/modules/\2\3\4|g' "$VBOOT_DIR/modules.dep"
+# echo "Compiling Device Tree Blobs (DTBs)..." | tee -a "$LOG_FILE"
+# kmake dtbs 2>&1 | tee -a "$LOG_FILE" || die "DTB compilation failed"
+# 
+# echo "Compiling in-tree Kernel Modules..." | tee -a "$LOG_FILE"
+# MODULES_STAGING="$KERNEL_SRC/out/modules_staging"
+# rm -rf "$MODULES_STAGING"
+# mkdir -p "$MODULES_STAGING"
+# 
+# kmake modules 2>&1 | tee -a "$LOG_FILE" || die "in-tree modules compilation failed"
+# kmake INSTALL_MOD_PATH="$MODULES_STAGING" INSTALL_MOD_STRIP=1 modules_install 2>&1 | tee -a "$LOG_FILE" || die "in-tree modules install failed"
+# 
+# echo "Compiling external Kernel Modules..." | tee -a "$LOG_FILE"
+# find "$EXT_MODULES_ROOT" -name "Module.symvers" -delete 2>/dev/null || true
+# RPATH=$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$EXT_MODULES_ROOT" "$KERNEL_SRC")
+# 
+# # 1. Patch audio-kernel cs35l43 wm_adsp.h format specifiers
+# if [ -f "$EXT_MODULES_ROOT/qcom/opensource/audio-kernel/asoc/codecs/cs35l43/wm_adsp.h" ]; then
+#     echo "Patching cs35l43 wm_adsp.h pointer format specifiers..." | tee -a "$LOG_FILE"
+#     sed -i 's/(0x%x, %x)/(0x%x, %p)/g' "$EXT_MODULES_ROOT/qcom/opensource/audio-kernel/asoc/codecs/cs35l43/wm_adsp.h"
+# fi
+# 
+# # 2. Setup WLAN symlinks for qcacld-3.0 (qca6490, common host, and fw-api)
+# if [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0" ]; then
+#     ln -sfn . "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/.qca6490"
+#     [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/qca-wifi-host-cmn" ] && ln -sfn ../qca-wifi-host-cmn "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/cmn"
+#     [ -d "$EXT_MODULES_ROOT/qcom/opensource/wlan/fw-api" ] && ln -sfn ../fw-api "$EXT_MODULES_ROOT/qcom/opensource/wlan/qcacld-3.0/fw-api"
+# fi
+# 
+# # 3. Setup synx header paths for eva-kernel-v1
+# mkdir -p "$KERNEL_SRC/drivers/media/platform/msm"
+# if [ -d "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/msm/synx" ]; then
+#     ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/msm/synx" "$KERNEL_SRC/drivers/media/platform/msm/synx"
+# fi
+# if [ -d "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" ]; then
+#     mkdir -p "$KERNEL_SRC/include/media"
+#     ln -sfn "$EXT_MODULES_ROOT/qcom/opensource/synx-kernel/include/uapi/synx/media" "$KERNEL_SRC/include/media/synx"
+# fi
+# 
+# EXT_MODULES=(
+#     "qcom/opensource/mmrm-driver"
+#     "qcom/opensource/mm-drivers/sync_fence"
+#     "qcom/opensource/mm-drivers/msm_ext_display"
+#     "qcom/opensource/securemsm-kernel"
+#     "qcom/opensource/spu-kernel"
+#     "qcom/opensource/synx-kernel"
+#     "qcom/opensource/graphics-kernel"
+#     "qcom/opensource/video-driver"
+#     "qcom/opensource/display-drivers/msm"
+#     "qcom/opensource/camera-kernel"
+#     "qcom/opensource/audio-kernel"
+#     "qcom/opensource/dsp-kernel"
+#     "qcom/opensource/eva-kernel-v1"
+#     "qcom/opensource/datarmnet-ext/mem"
+#     "qcom/opensource/dataipa/drivers/platform/msm"
+#     "qcom/opensource/datarmnet/core"
+#     "qcom/opensource/datarmnet-ext/aps"
+#     "qcom/opensource/datarmnet-ext/offload"
+#     "qcom/opensource/datarmnet-ext/perf"
+#     "qcom/opensource/datarmnet-ext/perf_tether"
+#     "qcom/opensource/datarmnet-ext/sch"
+#     "qcom/opensource/datarmnet-ext/shs"
+#     "qcom/opensource/datarmnet-ext/wlan"
+#     "qcom/opensource/wlan/platform"
+#     "qcom/opensource/wlan/qcacld-3.0/.qca6490"
+#     "qcom/opensource/bt-kernel"
+#     "nxp/opensource/driver"
+# )
+# 
+# EXTRA_MOD_CFLAGS="-Wno-error=format -Wno-error=misleading-indentation -Wno-error=unused-but-set-variable -Wno-error=unused-variable"
+# 
+# for mod in "${EXT_MODULES[@]}"; do
+#     if [ -d "$EXT_MODULES_ROOT/$mod" ]; then
+#         echo "Building external module: $mod..." | tee -a "$LOG_FILE"
+#         mod_extra_args=()
+#         if [ "$mod" = "qcom/opensource/wlan/platform" ]; then
+#             mod_extra_args+=("CONFIG_EXCLUDE_ICNSS=y")
+#         fi
+# 
+#         kmake -C "$EXT_MODULES_ROOT/$mod" \
+#             M="$RPATH/$mod" \
+#             KERNEL_SRC="$KERNEL_SRC" \
+#             OUT_DIR="$KERNEL_SRC/out" \
+#             O="$KERNEL_SRC/out" \
+#             KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
+#             EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
+#             KCFLAGS="$EXTRA_MOD_CFLAGS" \
+#             "${mod_extra_args[@]}" \
+#             2>&1 | tee -a "$LOG_FILE" || {
+#                 echo "Warning: compilation of $mod failed, continuing..." | tee -a "$LOG_FILE"
+#                 continue
+#             }
+# 
+#         kmake -C "$EXT_MODULES_ROOT/$mod" \
+#             M="$RPATH/$mod" \
+#             KERNEL_SRC="$KERNEL_SRC" \
+#             OUT_DIR="$KERNEL_SRC/out" \
+#             O="$KERNEL_SRC/out" \
+#             INSTALL_MOD_PATH="$MODULES_STAGING" \
+#             INSTALL_MOD_STRIP=1 \
+#             KERNEL_UAPI_HEADERS_DIR="$KERNEL_SRC/out" \
+#             EXTRA_CFLAGS="$EXTRA_MOD_CFLAGS" \
+#             KCFLAGS="$EXTRA_MOD_CFLAGS" \
+#             "${mod_extra_args[@]}" \
+#             modules_install 2>&1 | tee -a "$LOG_FILE" || {
+#                 echo "Warning: modules_install of $mod failed, continuing..." | tee -a "$LOG_FILE"
+#                 continue
+#             }
+#     fi
+# done
+# 
+# echo "Processing module stages and depmod..." | tee -a "$LOG_FILE"
+# KERNEL_RELEASE_VER=$(cat "$KERNEL_SRC/out/include/config/kernel.release" 2>/dev/null || echo "$KERNEL_VERSION")
+# depmod -b "$MODULES_STAGING" -F "$KERNEL_SRC/out/System.map" "$KERNEL_RELEASE_VER" 2>&1 | tee -a "$LOG_FILE" || true
+# 
+# MODULES_OUT=$(find "$MODULES_STAGING/lib/modules" -mindepth 1 -maxdepth 1 -type d | head -n1)
+# [ -z "$MODULES_OUT" ] && MODULES_OUT="$MODULES_STAGING/lib/modules/$KERNEL_RELEASE_VER"
+# 
+# VBOOT_DIR="$KERNEL_SRC/out/vendor_ramdisk"
+# VDLKM_DIR="$KERNEL_SRC/out/vendor_dlkm"
+# rm -rf "$VBOOT_DIR" "$VDLKM_DIR"
+# mkdir -p "$VBOOT_DIR" "$VDLKM_DIR"
+# 
+# FIRST_STAGE_MODULES=$(cat "$COMMON_DEVICE_DIR/modules.load.vendor_boot" 2>/dev/null || cat "$KERNEL_SRC/modules.list.msm.waipio" 2>/dev/null || echo "")
+# for mod in $FIRST_STAGE_MODULES; do
+#     mod_path=$(find "$MODULES_OUT" -name "$mod" -print -quit 2>/dev/null)
+#     [ -n "$mod_path" ] || continue
+#     cp "$mod_path" "$VBOOT_DIR/"
+#     echo "$mod" >> "$VBOOT_DIR/modules.load"
+#     echo "$mod" >> "$VBOOT_DIR/modules.load.recovery"
+# done
+# 
+# SECOND_STAGE_MODULES=$(cat "$COMMON_DEVICE_DIR/modules.load.recovery" 2>/dev/null || cat "$DEVICE_DIR/modules.list.second_stage" 2>/dev/null || echo "")
+# for mod in $SECOND_STAGE_MODULES; do
+#     mod_path=$(find "$MODULES_OUT" -name "$mod" -print -quit 2>/dev/null)
+#     [ -n "$mod_path" ] || continue
+#     cp "$mod_path" "$VBOOT_DIR/"
+#     cp "$mod_path" "$VDLKM_DIR/"
+#     echo "$mod" >> "$VBOOT_DIR/modules.load.recovery"
+#     echo "$mod" >> "$VDLKM_DIR/modules.load"
+# done
+# 
+# VENDOR_DLKM_MODULES=$(cat "$COMMON_DEVICE_DIR/modules.load" 2>/dev/null || cat "$DEVICE_DIR/modules.list.vendor_dlkm" 2>/dev/null || echo "")
+# for mod in $VENDOR_DLKM_MODULES; do
+#     mod_path=$(find "$MODULES_OUT" -name "$mod" -print -quit 2>/dev/null)
+#     [ -n "$mod_path" ] || continue
+#     cp "$mod_path" "$VDLKM_DIR/"
+#     echo "$mod" >> "$VDLKM_DIR/modules.load"
+# done
+# 
+# # Copy any remaining compiled modules to vendor_dlkm so no driver is missing
+# find "$MODULES_OUT" -type f -name "*.ko" -exec cp -n {} "$VDLKM_DIR/" \; 2>/dev/null || true
+# 
+# # Blocklists
+# [ -f "$COMMON_DEVICE_DIR/modules.blocklist" ] && cp "$COMMON_DEVICE_DIR/modules.blocklist" "$VDLKM_DIR/modules.blocklist"
+# [ -f "$COMMON_DEVICE_DIR/modules.blocklist.vendor_boot" ] && cp "$COMMON_DEVICE_DIR/modules.blocklist.vendor_boot" "$VBOOT_DIR/modules.blocklist"
+# 
+# # Copy module metadata
+# cp "$MODULES_OUT"/modules.{alias,dep,softdep} "$VDLKM_DIR/" 2>/dev/null || true
+# cp "$MODULES_OUT"/modules.{alias,dep,softdep} "$VBOOT_DIR/" 2>/dev/null || true
+# 
+# [ -f "$VDLKM_DIR/modules.dep" ] && sed -E -i 's|([^: ]*/)([^/]*\.ko)([:]?)([ ]|$)|/vendor_dlkm/lib/modules/\2\3\4|g' "$VDLKM_DIR/modules.dep"
+# [ -f "$VBOOT_DIR/modules.dep" ] && sed -E -i 's|([^: ]*/)([^/]*\.ko)([:]?)([ ]|$)|/lib/modules/\2\3\4|g' "$VBOOT_DIR/modules.dep"
 
 echo "Packaging AnyKernel3..." | tee -a "$LOG_FILE"
 rm -rf "$ROOT_DIR/AnyKernel3"
@@ -687,64 +687,67 @@ git clone https://gitlab.com/nekoshirro/AnyKernel3.git -b marble-evox "$ROOT_DIR
 cp "$BOOT_IMG_PATH" "$ROOT_DIR/AnyKernel3/Image" || die "copy Image failed"
 cp "$BOOT_IMG_PATH" "$ROOT_DIR/AnyKernel3/kernel" || die "copy kernel failed"
 
-# Packaging DTB for AnyKernel3
-echo "Packaging DTB for AnyKernel3..." | tee -a "$LOG_FILE"
-DTBS_BASE="$KERNEL_SRC/out/dtbs_base"
-DTBS_OUT="$KERNEL_SRC/out/dtbs_out"
-rm -rf "$DTBS_BASE" "$DTBS_OUT"
-mkdir -p "$DTBS_BASE" "$DTBS_OUT"
+# # Packaging DTB for AnyKernel3
+# echo "Packaging DTB for AnyKernel3..." | tee -a "$LOG_FILE"
+# DTBS_BASE="$KERNEL_SRC/out/dtbs_base"
+# DTBS_OUT="$KERNEL_SRC/out/dtbs_out"
+# rm -rf "$DTBS_BASE" "$DTBS_OUT"
+# mkdir -p "$DTBS_BASE" "$DTBS_OUT"
+# 
+# cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*ukee*.dtb "$DTBS_BASE/" 2>/dev/null || true
+# cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*waipio*.dtb "$DTBS_BASE/" 2>/dev/null || true
+# 
+# if [ -f "$TOOLS_DIR/merge_dtbs.py" ]; then
+#     PATH="$TOOLS_DIR:$PATH" python3 "$TOOLS_DIR/merge_dtbs.py" \
+#         --base "$DTBS_BASE" \
+#         --techpack "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" \
+#         --out "$DTBS_OUT" 2>&1 | tee -a "$LOG_FILE" || true
+# fi
+# 
+# MERGED_MARBLE_DTB=$(find "$DTBS_OUT" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
+# if [ -z "$MERGED_MARBLE_DTB" ]; then
+#     MERGED_MARBLE_DTB=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
+# fi
+# 
+# if [ -n "$MERGED_MARBLE_DTB" ] && [ -f "$MERGED_MARBLE_DTB" ]; then
+#     echo "Using marble DTB: $MERGED_MARBLE_DTB" | tee -a "$LOG_FILE"
+#     cp "$MERGED_MARBLE_DTB" "$ROOT_DIR/AnyKernel3/dtb"
+# else
+#     echo "Concatenating available UKEE/WAIPIO DTBs for AnyKernel3/dtb..." | tee -a "$LOG_FILE"
+#     ALL_DTBS=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f \( -name "*ukee*.dtb" -o -name "*waipio*.dtb" \) 2>/dev/null | sort -u)
+#     if [ -n "$ALL_DTBS" ]; then
+#         cat $ALL_DTBS > "$ROOT_DIR/AnyKernel3/dtb"
+#     fi
+# fi
+# 
+# # Copying compiled modules to AnyKernel3
+# echo "Copying compiled kernel modules to AnyKernel3..." | tee -a "$LOG_FILE"
+# mkdir -p "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm"
+# cp -r "$VDLKM_DIR"/* "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/" 2>/dev/null || true
+# 
+# mkdir -p "$ROOT_DIR/AnyKernel3/modules/vendor_boot"
+# cp -r "$VBOOT_DIR"/* "$ROOT_DIR/AnyKernel3/modules/vendor_boot/" 2>/dev/null || true
+# 
+# # Strip unneeded debug symbols from all packaged modules to optimize zip size
+# echo "Stripping debug symbols from packaged kernel modules..." | tee -a "$LOG_FILE"
+# find "$ROOT_DIR/AnyKernel3/modules" -type f -name "*.ko" -exec llvm-strip --strip-unneeded {} + 2>/dev/null || true
+# rm -f "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/kheaders.ko" "$ROOT_DIR/AnyKernel3/modules/vendor_boot/kheaders.ko" 2>/dev/null || true
+# 
+# [ -f "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" ] && sort -u "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" -o "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load"
+# cp "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" "$ROOT_DIR/AnyKernel3/modules/modules.load" 2>/dev/null || true
+# 
+# TOTAL_MODULES=$(find "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm" -type f -name "*.ko" | wc -l)
+# echo "Total modules packaged: $TOTAL_MODULES" | tee -a "$LOG_FILE"
+# 
+# # Adjust AnyKernel3 do.modules property (leaving kernel.string as repo default)
+# if [ "$TOTAL_MODULES" -gt 0 ]; then
+#     sed -i 's/do.modules=0/do.modules=1/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
+# else
+#     sed -i 's/do.modules=1/do.modules=0/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
+# fi
 
-cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*ukee*.dtb "$DTBS_BASE/" 2>/dev/null || true
-cp "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom"/*waipio*.dtb "$DTBS_BASE/" 2>/dev/null || true
-
-if [ -f "$TOOLS_DIR/merge_dtbs.py" ]; then
-    PATH="$TOOLS_DIR:$PATH" python3 "$TOOLS_DIR/merge_dtbs.py" \
-        --base "$DTBS_BASE" \
-        --techpack "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" \
-        --out "$DTBS_OUT" 2>&1 | tee -a "$LOG_FILE" || true
-fi
-
-MERGED_MARBLE_DTB=$(find "$DTBS_OUT" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
-if [ -z "$MERGED_MARBLE_DTB" ]; then
-    MERGED_MARBLE_DTB=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f -name "*marble*.dtb" -print -quit 2>/dev/null || true)
-fi
-
-if [ -n "$MERGED_MARBLE_DTB" ] && [ -f "$MERGED_MARBLE_DTB" ]; then
-    echo "Using marble DTB: $MERGED_MARBLE_DTB" | tee -a "$LOG_FILE"
-    cp "$MERGED_MARBLE_DTB" "$ROOT_DIR/AnyKernel3/dtb"
-else
-    echo "Concatenating available UKEE/WAIPIO DTBs for AnyKernel3/dtb..." | tee -a "$LOG_FILE"
-    ALL_DTBS=$(find "$KERNEL_SRC/out/arch/arm64/boot/dts/vendor/qcom" -type f \( -name "*ukee*.dtb" -o -name "*waipio*.dtb" \) 2>/dev/null | sort -u)
-    if [ -n "$ALL_DTBS" ]; then
-        cat $ALL_DTBS > "$ROOT_DIR/AnyKernel3/dtb"
-    fi
-fi
-
-# Copying compiled modules to AnyKernel3
-echo "Copying compiled kernel modules to AnyKernel3..." | tee -a "$LOG_FILE"
-mkdir -p "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm"
-cp -r "$VDLKM_DIR"/* "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/" 2>/dev/null || true
-
-mkdir -p "$ROOT_DIR/AnyKernel3/modules/vendor_boot"
-cp -r "$VBOOT_DIR"/* "$ROOT_DIR/AnyKernel3/modules/vendor_boot/" 2>/dev/null || true
-
-# Strip unneeded debug symbols from all packaged modules to optimize zip size
-echo "Stripping debug symbols from packaged kernel modules..." | tee -a "$LOG_FILE"
-find "$ROOT_DIR/AnyKernel3/modules" -type f -name "*.ko" -exec llvm-strip --strip-unneeded {} + 2>/dev/null || true
-rm -f "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/kheaders.ko" "$ROOT_DIR/AnyKernel3/modules/vendor_boot/kheaders.ko" 2>/dev/null || true
-
-[ -f "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" ] && sort -u "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" -o "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load"
-cp "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm/modules.load" "$ROOT_DIR/AnyKernel3/modules/modules.load" 2>/dev/null || true
-
-TOTAL_MODULES=$(find "$ROOT_DIR/AnyKernel3/modules/vendor_dlkm" -type f -name "*.ko" | wc -l)
-echo "Total modules packaged: $TOTAL_MODULES" | tee -a "$LOG_FILE"
-
-# Adjust AnyKernel3 do.modules property (leaving kernel.string as repo default)
-if [ "$TOTAL_MODULES" -gt 0 ]; then
-    sed -i 's/do.modules=0/do.modules=1/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
-else
-    sed -i 's/do.modules=1/do.modules=0/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
-fi
+# Pure kernel build: disable do.modules in AnyKernel3
+sed -i 's/do.modules=1/do.modules=0/' "$ROOT_DIR/AnyKernel3/anykernel.sh"
 
 KSUN_VER=$(git -C "$KERNEL_SRC/KernelSU-Next" describe --tags --abbrev=0 2>/dev/null || true)
 [ -z "$KSUN_VER" ] && KSUN_VER=$(git -C "$KERNEL_SRC/KernelSU-Next" rev-parse --short HEAD 2>/dev/null || echo "v3.4.2")
