@@ -11,11 +11,19 @@ This repository provides a customized repo manifest designed specifically for bu
 - At least 16 GB RAM (32 GB recommended)
 
 # Usage:
-Run this command on your root ROM directory:
+Run one of these commands on your root ROM directory:
 
+- Kernel 5.10:
 ```bash
-curl https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/shinkai-17/shinkai.sh | bash
+curl https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/shinkai-17/shinkai-17.sh | bash
 ```
+
+- Kernel 6.6:
+```bash
+curl https://raw.githubusercontent.com/nekoshirro/platform_manifest-marble/refs/heads/shinkai-17/shinkai-17-6.6.sh | bash
+```
+
+Or run the downloaded script locally (`./shinkai-17.sh` or `./shinkai-17-6.6.sh`) to select the Telegram notification target interactively.
 
 This script will:
 1. Initialize the repo using the customized manifest
